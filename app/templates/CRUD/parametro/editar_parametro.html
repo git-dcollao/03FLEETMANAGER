@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="containerForm">
+                <h1 class="mb-4 text-center">Editar Parametro</h1>
+                <form method="post" action="{{ url_for('crud.editar_parametro', id_parametro=parametro.id_parametro) }}" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="nombre_parametro">Nombre Parametro:</label>
+                        <input type="text" class="form-control" id="nombre_parametro" name="nombre_parametro" value="{{ parametro.nombre_parametro }}" required>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="segundos_parametro">Minutos:</label>
+                                <input type="number" class="form-control" id="segundos_parametro" name="segundos_parametro" min="1" value="{{ parametro.segundos_parametro // 60}}" required>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="distancia_parametro">Distancia en metros:</label>
+                                <input type="number" class="form-control" id="distancia_parametro" min="0" name="distancia_parametro" value="{{ parametro.distancia_parametro }}" required>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="velocidad_parametro">Velocidad en Km/h:</label>
+                                <input type="number" class="form-control" id="velocidad_parametro" min="0" name="velocidad_parametro" value="{{ parametro.velocidad_parametro / 3.6 }}" required>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success">Guardar Cambios</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock maincontent %}

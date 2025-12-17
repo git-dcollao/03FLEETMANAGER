@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="container mt-5">
+    <h1 class="text-center">Listado de Equipos</h1>
+    <div class="row">
+        {% for id_equipo, equipos in equipos_con_integrantes.items() %}
+            <div class="col-md-4">
+                <div class="card mb-3">
+                    <div class="card-header">{{ nombres_equipos[id_equipo] }}</div>
+                    <div class="card-body">
+                        <ul class="list-group">
+                            {% for equipo_personal in equipos %}
+                                {% for personal in equipo_personal.personal %}
+                                    <li class="list-group-item" style="border: none;">{{ personal.nombre_personal }} {{ personal.apellido_paterno }} {{ personal.apellido_materno }} - {{ personal.cargo.nombre_cargo }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="card-footer">
+                        <a href="{{ url_for('crud.crud_equipo', id_ep=equipos[0].id_ep) }}" class="btn btn-success">Editar Equipo</a>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock maincontent %}

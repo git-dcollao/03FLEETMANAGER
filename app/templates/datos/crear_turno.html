@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="containerForm">
+                <h1 class="mb-4">Crear Turno</h1>
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="nombre_turno">Nombre del turno</label>
+                        <input type="text" class="form-control" id="nombre_turno" name="nombre_turno" required>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="horario_inicio">Horario Inicio</label>
+                                <input type="time" class="form-control" id="horario_inicio" name="horario_inicio" required>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="horario_termino">Horario Termino</label>
+                                <input type="time" class="form-control" id="horario_termino" name="horario_termino" required>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success">Crear Turno</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock maincontent %}

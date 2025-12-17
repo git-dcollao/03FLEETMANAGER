@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% block headcontent %}
+<script src="../../static/JS/validaciones.js"></script>
+{% endblock headcontent %}
+{% block maincontent %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="containerForm">
+                <h1 class="mb-4">Agregar Personal</h1>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-danger">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <form method="post" onsubmit="return validarRegistro();">
+                    <div class="row">
+                        
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="rut_personal">RUT:</label>
+                                <input type="text" class="form-control" id="rut_personal" name="rut_personal" placeholder="Siga el formato 12345678-9" required>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="estado">Estado:</label>
+                                <select class="form-control" id="estado" name="estado" required>
+                                    <option value="Activo">Activo</option>
+                                    <option value="Desvinculado">Desvinculado</option>
+                                    <option value="Permiso">Permiso</option>
+                                    <option value="Vacaciones">Vacaciones</option>
+                                    <option value="Licencia Médica">Licencia Médica</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="nombre_personal">Nombres:</label>
+                                <input type="text" class="form-control" id="nombre_personal" name="nombre_personal" placeholder="Ronald" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="apellido_paterno">Apellido Paterno:</label>
+                                <input type="text" class="form-control" id="apellido_paterno" name="apellido_paterno" placeholder="Morris" required>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="apellido_materno">Apellido Materno:</label>
+                                <input type="text" class="form-control" id="apellido_materno" name="apellido_materno" placeholder="Cofre" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="fecha_contrato">Fecha de Contrato:</label>
+                                <input type="date" class="form-control" id="fecha_contrato" name="fecha_contrato" required>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="id_cargo">Cargo:</label>
+                                <select class="form-control" id="id_cargo" name="id_cargo" required>
+                                    {% for cargo in cargos %}
+                                        <option value="{{ cargo.id_cargo }}">{{ cargo.nombre_cargo }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                    </div><div class="row">
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="fono">Celular:</label>
+                                <input type="text" class="form-control" id="fono" name="fono" placeholder="Siga el formato 987654321" required>
+                            </div>
+                        </div>
+                        <div class="col"></div>
+                    </div>
+                    <button type="submit" class="btn btn-success" style="margin-top: 10px;">Agregar Personal</button>
+                    <div class="form-group">
+                        <!--ALERTAS RUT-->
+                        <div id="alertaRut" class="alert alert-danger" role="alert" style="display: none;">
+                            No sigue el formato de rut (12345678-9).
+                        </div>
+                        <div id="alertaRut2" class="alert alert-danger" role="alert" style="display: none;">
+                            Rut inválido, ingrese uno nuevamente.
+                        </div>
+                        <!--ALERTAS NOMBRE-->
+                        <div id="alertaNombre" class="alert alert-danger" role="alert" style="display: none;">
+                            Nombre demasiado corto, escriba más de 2 caracteres.
+                        </div>
+                        <div id="alertaNombre2" class="alert alert-danger" role="alert" style="display: none;">
+                            Nombre inválido.
+                        </div>
+                        <!--ALERTAS APELLIDOS-->
+                        <div id="alertaAM" class="alert alert-danger" role="alert" style="display: none;">
+                            Apellido materno muy corto, escriba más de 2 caracteres.
+                        </div>
+                        <div id="alertaAM2" class="alert alert-danger" role="alert" style="display: none;">
+                            Apellido materno inválido.
+                        </div>
+                        <div id="alertaAP" class="alert alert-danger" role="alert" style="display: none;">
+                            Apellido paterno muy corto, escriba más de 2 caracteres.
+                        </div>
+                        <div id="alertaAP2" class="alert alert-danger" role="alert" style="display: none;">
+                            Apellido paterno inválido.
+                        </div>
+                        <!--ALERTA FECHA-->
+                        <div id="alertaFecha" class="alert alert-danger" role="alert" style="display: none;">
+                            Seleccione una fecha válida.
+                        </div>
+                        <!--ALERTA FECHA-->
+                        <div id="alertaNumero" class="alert alert-danger" role="alert" style="display: none;">
+                            Ingrese un número válido (Mayor a 8 dígitos).
+                        </div>
+                        <div id="alertaNumero2" class="alert alert-danger" role="alert" style="display: none;">
+                            Solo ingrese datos númericos.
+                        </div>
+                        <div id="alertaNumero3" class="alert alert-danger" role="alert" style="display: none;">
+                            Ingrese un número válido (Menor a 10 dígitos).
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock maincontent %}
+{% block scripts %}
+<script>
+    // Obtener el elemento de entrada de fecha
+    var fechaContratoInput = document.getElementById('fecha_contrato');
+    // Obtener la fecha actual en el formato adecuado para un campo date
+    var fechaActual = new Date().toISOString().split('T')[0];
+    // Establecer el valor del campo de entrada con la fecha actual
+    fechaContratoInput.value = fechaActual;
+</script>
+{% endblock scripts %}

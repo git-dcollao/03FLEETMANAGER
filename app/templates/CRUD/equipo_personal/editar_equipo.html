@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="containerForm">
+                <h1 class="mb-4">Crear Equipo Personal</h1>
+                <form method="post" action="{{ url_for('crud.editar_equipo', id_equipo=equipo.id_equipo) }}">
+                    <div class="mb-3">
+                        <label for="nombre_equipo">Nombre del Equipo:</label>
+                        <input type="text" class="form-control" id="nombre_equipo" name="nombre_equipo" value="{{ equipo.nombre_equipo }}" required>
+                    </div>
+                    <div id="personal-container" class="mb-3" style="margin-top: 10px;">
+                        {% for equipo_persona in equipo_personal %}
+                        <div class="integrante mb-3">
+                            <div class="row align-items-center">
+                                <div class="col">
+                                    <select name="id_personal" class="form-select" required>
+                                        {% for persona in personal %}
+                                        <option value="{{ persona.id_personal }}" {% if persona.id_personal == equipo_persona.id_personal %} selected {% endif %}>{{ persona.nombre_personal }} {{ persona.apellido_paterno }} {{ persona.apellido_materno }} - {{ persona.cargo.nombre_cargo }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col">
+                                    <button type="button" class="btn btn-danger btn-remove" onclick="eliminarIntegrante(this)">🗑️</button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button type="submit" class="btn btn-success" id="guardarCambiosBtn" style="margin-top: 10px;">Guardar Cambios</button>
+                    <button type="button" class="btn btn-success" style="margin-top: 10px;" onclick="agregarCampo()">Agregar Integrante</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock maincontent %}
+{% block scripts %}
+<script>
+    function agregarCampo() {
+        var container = document.getElementById('personal-container');
+        var integrantes = container.querySelectorAll('.integrante');
+        if (integrantes.length >= 1) { // Solo agrega un integrante si no hay ninguno
+            var newSelect = document.createElement('div');
+            newSelect.innerHTML = `<div class="integrante mb-3">
+                                        <div class="row align-items-center">
+                                            <div class="col">
+                                                <select name="id_personal" class="form-select" required>
+                                                    {% for persona in personal %}
+                                                    <option value="{{ persona.id_personal }}">{{ persona.nombre_personal }} {{ persona.apellido_paterno }} {{ persona.apellido_materno }} - {{ persona.cargo.nombre_cargo }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="col">
+                                                <button type="button" class="btn btn-danger btn-remove" onclick="eliminarIntegrante(this)">🗑️</button>
+                                            </div>
+                                        </div>
+                                    </div>`;
+            container.appendChild(newSelect);
+            hideSelectedOptions();
+        }
+    }
+
+    function eliminarIntegrante(button) {
+        var container = button.closest('.integrante');
+        container.remove();
+        hideSelectedOptions();
+    }
+
+    function hideSelectedOptions() {
+        var selects = document.querySelectorAll('#personal-container select');
+        var selectedValues = [];
+        selects.forEach(function(select) {
+            var selectedOption = select.options[select.selectedIndex];
+            if (selectedOption) {
+                var value = selectedOption.value;
+                if (value) {
+                    selectedValues.push(value);
+                }
+            }
+        });
+
+        var botonEliminar = document.querySelector('.btn-remove');
+        if (selects.length <= 1) {
+            botonEliminar.style.display = 'none';
+        } else {
+            botonEliminar.style.display = 'block';
+        }
+
+        selects.forEach(function(select) {
+            var options = select.options;
+            for (var i = 0; i < options.length; i++) {
+                var value = options[i].value;
+                if (selectedValues.includes(value)) {
+                    options[i].style.display = 'none';
+                } else {
+                    options[i].style.display = 'block';
+                }
+            }
+        });
+    }
+</script>
+{% endblock scripts %}

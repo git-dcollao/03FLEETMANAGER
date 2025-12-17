@@ -1,0 +1,586 @@
+{% extends 'base.html' %}
+{% block headcontent %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/json2/20160511/json2.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <script src="../static/JS/scripts.js"></script>
+{% endblock %}
+
+{% block body %}
+<button class="btn btn-success toggler2" onclick="toggleSidebarOpciones()">⚙️</button>
+<div class="sidebar2" id="sidebar2">
+    <button type="button" class="btn-close close-btn2" aria-label="Close" onclick="toggleSidebarOpciones()"></button>
+    <div class="sidebar-content">
+        <label for="fecha" class="form-label">Selecciona una fecha:</label>
+        <select id="fecha" class="form-select">
+            {% for fecha in fechas_disponibles %}
+            <option value="{{ fecha }}">{{ fecha }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="horaInicio" class="form-label">Hora de inicio:</label>
+        <input type="time" id="horaInicio" class="form-control" step="1" value="00:00:00">
+
+        <label for="horaFin" class="form-label">Hora de fin:</label>
+        <input type="time" id="horaFin" class="form-control" step="1" value="23:59:59">
+        <br>
+
+        <label class="form-label">Mostrar/Ocultar Capas:</label>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="toggleCuadrantes" checked>
+            <label class="form-check-label ms-1" for="toggleCuadrantes">Cuadrantes</label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="toggleSectores" checked>
+            <label class="form-check-label ms-1" for="toggleSectores">Sectores</label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="toggleZTrabajos" checked>
+            <label class="form-check-label ms-1" for="toggleZTrabajos">Zonas de Trabajos</label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="toggleCercos" checked>
+            <label class="form-check-label ms-1" for="toggleCercos">Cercos</label>
+        </div>
+        <br>
+        <a id="graficarTrayecto" class="btn btn-success d-block mb-2">Graficar Trayecto</a>
+        <a id="animarTrayecto" class="btn btn-success d-block mb-2">Animar Trayecto</a>
+        <a id="mostrarMapaCalor" class="btn btn-success d-block mb-2">Mostrar Mapa de Calor</a>
+        <a id="limpiarMapa" class="btn btn-danger d-block mb-2">Limpiar Mapa</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block maincontent %}
+<div id="map" class="mapa" style="height: 800px; margin-top: 40px;"></div>
+{% endblock %}
+{% block scripts %}
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+<script>
+    const IP = "localhost";
+    const PORT = "8080";
+    const COLOR = "purple";
+    const BORDER_COLOR = "white";
+    const BORDER_SIZE = 1;
+    let map;
+    let previousPolyline;
+    let previousMarkers = [];
+    let markers = [];
+    let coordenadas_vehiculo = {{ coordenadas_vehiculo | tojson }};
+    console.log(coordenadas_vehiculo);
+    let initialCoords = [coordenadas_vehiculo[0].latitud, coordenadas_vehiculo[0].longitud];
+    let animationInterval;
+    let heatLayer;
+    let routingControls = [];
+    let areas = {{ areas | tojson }};
+
+    // Inicializar el mapa
+    function initMap() {
+        map = L.map('map', {
+            maxZoom: 18,
+            minZoom: 1
+        }).setView((initialCoords), 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        map.doubleClickZoom.disable();
+
+        // Plot areas
+        plotAreas(areas);
+
+        document.getElementById('toggleCercos').addEventListener('change', toggleLayerVisibility);
+        document.getElementById('toggleZTrabajos').addEventListener('change', toggleLayerVisibility);
+        document.getElementById('toggleCuadrantes').addEventListener('change', toggleLayerVisibility);
+        document.getElementById('toggleSectores').addEventListener('change', toggleLayerVisibility);
+    }
+
+
+    function clearAllLayersExceptBase() {
+        map.eachLayer(function (layer) {
+            if (!(layer instanceof L.TileLayer)) {
+                map.removeLayer(layer);
+            }
+        });
+    }
+
+    function clearAnimationInterval() {
+        clearInterval(animationInterval);
+    }
+
+    function clearRoutingControls() {
+        routingControls.forEach(function (control) {
+            map.removeControl(control);
+        });
+        routingControls = [];
+    }
+
+    function plotCoordinatesByDateAndTime() {
+        let fechaSeleccionada = document.getElementById('fecha').value;
+        let horaInicio = document.getElementById('horaInicio').value;
+        let horaFin = document.getElementById('horaFin').value;
+
+        let coordenadasFecha = coordenadas_vehiculo.filter(function (coord) {
+            return coord.fecha === fechaSeleccionada && coord.hora >= horaInicio && coord.hora <= horaFin;
+        });
+
+        plotCoordinates(coordenadasFecha);
+    }
+
+    function getColorForAreaType(tipo_area) {
+        switch (tipo_area) {
+            case 'cercos':
+                return 'black';
+            case 'z_trabajos':
+                return 'red';
+            case 'cuadrantes':
+                return 'blue';
+            case 'sectores':
+                return 'green';
+            default:
+                return 'gray';
+        }
+    }
+
+    function plotAreas(areas) {
+        clearAllLayersExceptBase();
+
+        layersByType = {
+            cuadrantes: [],
+            z_trabajos: [],
+            cercos: [],
+            sectores: [],
+        };
+
+        areas.forEach(area => {
+            let latlngs = [];
+
+            area.coordenadas.forEach(coord => {
+                let latlng = [coord.latitud, coord.longitud];
+                latlngs.push(latlng);
+            });
+
+            if (latlngs.length > 1) {
+                let polygonColor = getColorForAreaType(area.tipo_area);
+                let polygon = L.polygon(latlngs, {
+                    color: polygonColor,
+                    fillColor: polygonColor,
+                    fillOpacity: 0.5
+                });
+
+                polygon.bindPopup(area.nombre_area);
+
+                if (area.tipo_area === 'cuadrantes') {
+                    layersByType.cuadrantes.push(polygon);
+                } else if (area.tipo_area === 'sectores') {
+                    layersByType.sectores.push(polygon);
+                } else if (area.tipo_area === 'z_trabajos') {
+                    layersByType.z_trabajos.push(polygon);
+                } else if (area.tipo_area === 'cercos') {
+                    layersByType.cercos.push(polygon);
+                }
+            }
+        });
+
+        toggleLayerVisibility();
+    }
+
+    function plotCoordinates(coordenadas) {
+        clearAllLayersExceptBase();
+        clearPreviousMarkersAndPolyline();
+        clearRoutingControls();
+        plotAreas(areas);
+
+        let routingPoints = coordenadas.map(function (coord) {
+            return L.latLng(coord.latitud, coord.longitud);
+        });
+
+        // Crear rutas entre cada punto y el siguiente
+        for (let i = 0; i < coordenadas.length - 1; i++) {
+            let startPoint = routingPoints[i];
+            let endPoint = routingPoints[i + 1];
+
+            let routingControl = L.Routing.control({
+                waypoints: [startPoint, endPoint],
+                routeWhileDragging: false,
+                show: false,
+                addWaypoints: false,
+                draggableWaypoints: false,
+                fitSelectedRoutes: false,
+                serviceUrl: `http://${IP}:${PORT}/route/v1`,
+                lineOptions: {
+                    styles: [{ color: COLOR }]
+                },
+                createMarker: function () { return null; },
+                match: true
+            }).addTo(map);
+
+            routingControls.push(routingControl);
+        }
+
+        for (let i = 0; i < coordenadas.length; i++) {
+            let currentCoords = coordenadas[i];
+            let customMarker = createCustomMarker([currentCoords.latitud, currentCoords.longitud], COLOR);
+
+            let markerColor = COLOR;
+            let borderColor = BORDER_COLOR
+            let borderSize = BORDER_SIZE
+
+            if (i > 0) {
+                let horaActual = new Date(currentCoords.fecha + 'T' + currentCoords.hora);
+                let horaAnterior = new Date(coordenadas[i - 1].fecha + 'T' + coordenadas[i - 1].hora);
+                let diferenciaMinutos = (horaActual - horaAnterior) / (1000 * 60);
+
+                if (diferenciaMinutos > 40) {
+                    markerColor = 'red';
+                }
+            }
+
+            let markerSize = [8, 8];
+
+            if (i == 0) {
+                markerColor = 'green';
+            }
+
+            if (i == coordenadas.length - 1) {
+                markerColor = 'green';
+                borderColor = 'black';
+            }
+
+            if (markerColor == 'green') {
+                markerSize = [16, 16];
+                borderSize = 3;
+            }
+
+            if (markerColor == 'red') {
+                markerSize = [16, 16];
+                borderSize = 3;
+            }
+
+            customMarker.addTo(map);
+            customMarker.setZIndexOffset(999);
+            customMarker.bindPopup('Coordenada ' + (i + 1) + '<br>' + 'Fecha: ' + currentCoords.fecha + ' | ' + currentCoords.hora + '<br>' + 'Velocidad: ' + currentCoords.velocidad + ' Km/h' + ' | ' + 'Distancia: ' + currentCoords.distancia + ' m');
+
+            customMarker.setIcon(L.divIcon({
+                className: 'custom-marker',
+                iconSize: markerSize,
+                iconAnchor: [markerSize[0] / 2, markerSize[1] / 2],
+                html: '<div style="width: ' + markerSize[0] + 'px; height: ' + markerSize[1] + 'px; background-color: ' + markerColor + '; border-radius: 50%; border: ' + borderSize +'px solid ' + borderColor + '; cursor: default;"></div>'
+            }));
+
+            previousMarkers.push(customMarker);
+        }
+    }
+
+    function toggleLayerVisibility() {
+        const cercosCheckbox = document.getElementById('toggleCercos');
+        const zTrabajosCheckbox = document.getElementById('toggleZTrabajos');
+        const cuadrantesCheckbox = document.getElementById('toggleCuadrantes');
+        const sectoresCheckbox = document.getElementById('toggleSectores');
+
+        toggleLayerGroupVisibility(layersByType.cuadrantes, cuadrantesCheckbox.checked);
+        toggleLayerGroupVisibility(layersByType.sectores, sectoresCheckbox.checked);
+        toggleLayerGroupVisibility(layersByType.z_trabajos, zTrabajosCheckbox.checked);
+        toggleLayerGroupVisibility(layersByType.cercos, cercosCheckbox.checked);
+    }
+
+    function toggleLayerGroupVisibility(layerGroup, visible) {
+        if (visible) {
+            layerGroup.forEach(layer => {
+                layer.addTo(map);
+                layer.bringToFront(); // Ensure correct drawing order
+            });
+        } else {
+            layerGroup.forEach(layer => map.removeLayer(layer));
+        }
+    }
+
+    function clearPreviousMarkersAndPolyline() {
+        for (let i = 0; i < previousMarkers.length; i++) {
+            map.removeLayer(previousMarkers[i]);
+        }
+        previousMarkers = [];
+
+        if (previousPolyline) {
+            map.removeLayer(previousPolyline);
+        }
+        previousPolyline = null;
+    }
+
+    function animateCoordinatesByDate() {
+        let fechaSeleccionada = document.getElementById('fecha').value;
+        let horaInicio = document.getElementById('horaInicio').value;
+        let horaFin = document.getElementById('horaFin').value;
+
+        let coordenadasFechaHora = coordenadas_vehiculo.filter(function (coord) {
+            return coord.fecha === fechaSeleccionada && coord.hora >= horaInicio && coord.hora <= horaFin;
+        });
+
+        let velocidad = calcularVelocidad(coordenadasFechaHora.length);
+        animateCoordinates(coordenadasFechaHora, velocidad);
+    }
+
+    function animateCoordinates(coordenadas, velocidad) {
+        clearAllLayersExceptBase();
+        clearPreviousMarkersAndPolyline();
+        clearRoutingControls();
+
+        if (coordenadas.length === 0) {
+            // Solo hay una coordenada, dibujar el marcador para esa coordenada
+            let currentCoords = coordenadas[0];
+            let markerColor = 'green';
+            let borderColor = 'black';
+            let borderSize = 3;
+            let markerSize = [16, 16];
+
+            let customMarker = createCustomMarker([currentCoords.latitud, currentCoords.longitud], markerColor);
+            customMarker.addTo(map);
+            customMarker.setZIndexOffset(999);
+            customMarker.bindPopup('Coordenada 1 | ' + '<br>' + 'Fecha: ' + currentCoords.fecha + ' | ' + currentCoords.hora + '<br>' + 'Velocidad: ' + currentCoords.velocidad + ' Km/h' + ' | ' + 'Distancia: ' + currentCoords.distancia + ' m');
+
+            customMarker.setIcon(L.divIcon({
+                className: 'custom-marker',
+                iconSize: markerSize,
+                iconAnchor: [markerSize[0] / 2, markerSize[1] / 2],
+                html: '<div style="width: ' + markerSize[0] + 'px; height: ' + markerSize[1] + 'px; background-color: ' + markerColor + '; border-radius: 50%; border: ' + borderSize + 'px solid ' + borderColor + '; cursor: default;"></div>'
+            }));
+
+            markers.push(customMarker);
+
+            plotAreas(areas);
+            return;
+        }
+
+        let routingPoints = coordenadas.map(function (coord) {
+            return L.latLng(coord.latitud, coord.longitud);
+        });
+
+        let index = 0;
+        animationInterval = setInterval(function () {
+            if (index < coordenadas.length - 1) {
+                let startPoint = routingPoints[index];
+                let endPoint = routingPoints[index + 1];
+
+                let routingControl = L.Routing.control({
+                    waypoints: [startPoint, endPoint],
+                    routeWhileDragging: false,
+                    show: false,
+                    addWaypoints: false,
+                    draggableWaypoints: false,
+                    fitSelectedRoutes: false,
+                    serviceUrl: `http://${IP}:${PORT}/route/v1`,
+                    lineOptions: {
+                        styles: [{ color: COLOR }]
+                    },
+                    createMarker: function () { return null; },
+                    match: true
+                }).addTo(map);
+
+                routingControls.push(routingControl);
+
+                // Graficar punto actual
+                let currentCoords = coordenadas[index];
+                let nextCoords = coordenadas[index + 1];
+                let markerColor = COLOR;
+                let borderColor = BORDER_COLOR;
+                let borderSize = BORDER_SIZE;
+
+                if (index > 0) {
+                    let horaActual = new Date(currentCoords.fecha + 'T' + currentCoords.hora);
+                    let horaAnterior = new Date(coordenadas[index - 1].fecha + 'T' + coordenadas[index - 1].hora);
+                    let diferenciaMinutos = (horaActual - horaAnterior) / (1000 * 60);
+
+                    if (diferenciaMinutos > 40) {
+                        markerColor = 'red';
+                    }
+                }
+                let markerSize = [8, 8];
+
+                if (index == 0) {
+                    markerColor = 'green';
+                    borderSize = 3;
+                }
+
+                if (index == coordenadas.length - 1) {
+                    markerColor = 'green';
+                    borderColor = 'black';
+                    borderSize = 3;
+                }
+
+                if (markerColor == 'green') {
+                    markerSize = [16, 16];
+                }
+                if (markerColor == 'red') {
+                    markerSize = [16, 16];
+                    borderSize = 3;
+                }
+
+                let customMarker = createCustomMarker([currentCoords.latitud, currentCoords.longitud], markerColor);
+                customMarker.addTo(map);
+                customMarker.setZIndexOffset(999);
+                customMarker.bindPopup('Coordenada ' + (index + 1) + '<br>' + 'Fecha: ' + currentCoords.fecha + ' | ' + currentCoords.hora + '<br>' + 'Velocidad: ' + currentCoords.velocidad + ' Km/h' + ' | ' + 'Distancia: ' + currentCoords.distancia + ' m');
+
+                customMarker.setIcon(L.divIcon({
+                    className: 'custom-marker',
+                    iconSize: markerSize,
+                    iconAnchor: [markerSize[0] / 2, markerSize[1] / 2],
+                    html: '<div style="width: ' + markerSize[0] + 'px; height: ' + markerSize[1] + 'px; background-color: ' + markerColor + '; border-radius: 50%; border: ' + borderSize + 'px solid ' + borderColor + '; cursor: default;"></div>'
+                }));
+
+                markers.push(customMarker);
+
+                // Graficar siguiente punto
+                markerColor = COLOR;
+                borderColor = BORDER_COLOR;
+                borderSize = BORDER_SIZE;
+
+                if (index + 1 > 0) {
+                    let horaActual = new Date(nextCoords.fecha + 'T' + nextCoords.hora);
+                    let horaAnterior = new Date(coordenadas[index].fecha + 'T' + coordenadas[index].hora);
+                    let diferenciaMinutos = (horaActual - horaAnterior) / (1000 * 60);
+
+                    if (diferenciaMinutos > 40) {
+                        markerColor = 'red';
+                    }
+                }
+                markerSize = [8, 8];
+
+                if (index + 1 == 0) {
+                    markerColor = 'green';
+                    borderSize = 3;
+                }
+
+                if (index + 1 == coordenadas.length - 1) {
+                    markerColor = 'green';
+                    borderColor = 'black';
+                    borderSize = 3;
+                }
+
+                if (markerColor == 'green') {
+                    markerSize = [16, 16];
+                }
+                if (markerColor == 'red') {
+                    markerSize = [16, 16];
+                    borderSize = 3;
+                }
+
+                customMarker = createCustomMarker([nextCoords.latitud, nextCoords.longitud], markerColor);
+                customMarker.addTo(map);
+                customMarker.setZIndexOffset(999);
+                customMarker.bindPopup('Coordenada ' + (index + 2) + '<br>' + 'Fecha: ' + nextCoords.fecha + ' | ' + nextCoords.hora + '<br>' + 'Velocidad: ' + nextCoords.velocidad + ' Km/h' + ' | ' + 'Distancia: ' + nextCoords.distancia + ' m');
+
+                customMarker.setIcon(L.divIcon({
+                    className: 'custom-marker',
+                    iconSize: markerSize,
+                    iconAnchor: [markerSize[0] / 2, markerSize[1] / 2],
+                    html: '<div style="width: ' + markerSize[0] + 'px; height: ' + markerSize[1] + 'px; background-color: ' + markerColor + '; border-radius: 50%; border: ' + borderSize + 'px solid ' + borderColor + '; cursor: default;"></div>'
+                }));
+
+                markers.push(customMarker);
+
+                index++;
+            } else {
+                clearInterval(animationInterval);
+            }
+        }, velocidad);
+
+        plotAreas(areas);
+    }
+
+    window.onload = function () {
+        initMap();
+        document.getElementById('graficarTrayecto').addEventListener('click', function () {
+            clearAllLayersExceptBase();
+            clearAnimationInterval();
+            plotCoordinatesByDateAndTime();
+            ocultarMapaDeCalor();
+        });
+        document.getElementById('animarTrayecto').addEventListener('click', function () {
+            clearAllLayersExceptBase();
+            clearAnimationInterval();
+            animateCoordinatesByDate();
+            ocultarMapaDeCalor();
+        });
+        document.getElementById('limpiarMapa').addEventListener('click', function () {
+            clearAllLayersExceptBase();
+            clearAnimationInterval();
+            ocultarMapaDeCalor();
+            plotAreas(areas);
+        });
+        document.getElementById('mostrarMapaCalor').addEventListener('click', function () {
+            clearAllLayersExceptBase();
+            clearAnimationInterval();
+            let fechaSeleccionada = document.getElementById('fecha').value;
+            let horaInicio = document.getElementById('horaInicio').value;
+            let horaFin = document.getElementById('horaFin').value;
+            let coordenadasFiltradas = filtrarCoordenadasPorFechaYHora(fechaSeleccionada, horaInicio, horaFin);
+            plotCoordinatesByDateAndTime();
+            mostrarMapaCalor(coordenadasFiltradas);
+        });
+    };
+
+    function filtrarCoordenadasPorFechaYHora(fecha, horaInicio, horaFin) {
+        return coordenadas_vehiculo.filter(function (coord) {
+            return coord.fecha === fecha && coord.hora >= horaInicio && coord.hora <= horaFin;
+        });
+    }
+
+    function ocultarMapaDeCalor() {
+        if (heatLayer) {
+            map.removeLayer(heatLayer);
+            heatLayer = null;
+        }
+    }
+
+    function mostrarMapaCalor(coordenadasFiltradas) {
+        ocultarMapaDeCalor();
+        let heatArray = coordenadasFiltradas.map(function (coord) {
+            return [coord.latitud, coord.longitud, 1];
+        });
+
+        let heatOptions = {
+            radius: 25,
+            blur: 15,
+            maxZoom: 17
+        };
+
+        heatLayer = L.heatLayer(heatArray, heatOptions).addTo(map);
+        map.setView([coordenadasFiltradas[0].latitud, coordenadasFiltradas[0].longitud], 13);
+    }
+
+    function calcularVelocidad(cantidadRegistros) {
+        if (cantidadRegistros <= 60) {
+            return 1000;
+        } else if (cantidadRegistros >= 61 && cantidadRegistros <= 100) {
+            return 500;
+        } else if (cantidadRegistros >= 101 && cantidadRegistros <= 300) {
+            return 175;
+        } else if (cantidadRegistros >= 301 && cantidadRegistros <= 700) {
+            return 100;
+        } else if (cantidadRegistros >= 701 && cantidadRegistros <= 1400) {
+            return 80;
+        } else if (cantidadRegistros >= 1401) {
+            return 75;
+        } else {
+            return 50;
+        }
+    }
+
+    function createCustomMarker(latlng, color) {
+        let iconSize = [8, 8];
+        if (color === 'red') {
+            iconSize = [16, 16];
+        }
+        return L.marker(latlng, {
+            icon: L.divIcon({
+                className: 'custom-marker',
+                iconSize: iconSize,
+                iconAnchor: [iconSize[0] / 2, iconSize[1] / 2],
+                html: '<div style="width: ' + iconSize[0] + 'px; height: ' + iconSize[1] + 'px; background-color: ' + color + '; border-radius: 50%; cursor: default;"></div>'
+            })
+        });
+    }
+</script>
+
+{% endblock %}

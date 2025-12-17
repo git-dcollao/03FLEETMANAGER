@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="text-center">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h1 class="display-6 mb-6">Administración de Datos Maestros</h1>
+        </div>
+    </div>
+    <div class="option-container">
+        <div class="row justify-content-start">
+            <!-- Cargo -->
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/coordenadas/gps.png" alt="Cargo">
+                <!-- <h5 class="mt-3">Crear Cargo</h5> -->
+                <a href="{{ url_for('creation.crear_cargo') }}" class="btn btn-success">Crear Cargo</a>
+            </div>
+
+            <!-- Departamento -->
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/coordenadas/editar.png" alt="Detalle de Falla">
+                <!-- <h5 class="mt-3">Crear Departamento</h5> -->
+                <a href="{{ url_for('creation.crear_departamento') }}" class="btn btn-success">Crear Departamento</a>
+            </div>
+
+            <!-- Detalle de Falla -->
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/coordenadas/editar.png" alt="Detalle de Falla">
+                <!-- <h5 class="mt-3">Crear Detalle Falla</h5> -->
+                <a href="{{ url_for('creation.crear_detalle_falla') }}" class="btn btn-success">Crear Detalle Falla</a>
+            </div>
+
+            <!-- Turno -->
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/coordenadas/gps.png" alt="Turno">
+                <!-- <h5 class="mt-3">Crear Turno</h5> -->
+                <a href="{{ url_for('creation.crear_turno') }}" class="btn btn-success">Crear Turno</a>
+            </div>
+
+            <!-- Rol -->
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/personal/usuario.png" alt="Rol">
+                <!-- <h5 class="mt-3">Crear Rol</h5> -->
+                <a href="{{ url_for('creation.crear_rol') }}" class="btn btn-success">Crear Rol</a>
+            </div>
+
+            <!-- Flota -->
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/vehiculo/vehiculo.png" alt="Flota">
+                <!-- <h5 class="mt-3">Crear Flota</h5> -->
+                <a href="{{ url_for('creation.crear_flota') }}" class="btn btn-success">Crear Flota</a>
+            </div>
+
+            <!-- Falla -->
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/coordenadas/editar.png" alt="Falla">
+                <!-- <h5 class="mt-3">Crear Falla</h5> -->
+                <a href="{{ url_for('creation.crear_falla') }}" class="btn btn-success">Crear Falla</a>
+            </div>
+
+            <!-- Programación -->
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/coordenadas/archivo.png" alt="Programación">
+                <!-- <h5 class="mt-3">Crear Programación</h5> -->
+                <a href="{{ url_for('creation.crear_programacion') }}" class="btn btn-success">Crear Programación</a>
+            </div>
+
+            <!-- Rol Usuario -->
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/personal/usuario.png" alt="Rol Usuario">
+                <!-- <h5 class="mt-3">Crear Rol Usuario</h5> -->
+                <a href="{{ url_for('creation.crear_rol_usuario') }}" class="btn btn-success">Crear Rol Usuario</a>
+            </div>
+
+            <!-- Empresa -->
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/vehiculo/vehiculo.png" alt="Empresa">
+                <!-- <h5 class="mt-3">Gestionar Empresas</h5> -->
+                <a href="{{ url_for('crud.lista_empresas') }}" class="btn btn-primary">Ver Empresas</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock maincontent %}

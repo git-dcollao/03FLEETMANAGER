@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block maincontent %}
+<div class="container mt-4">
+    <h3>Editar Empresa</h3>
+
+    {% if empresa %}
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('crud.editar_empresa', id_empresa=empresa.id_empresa) }}">
+                    <div class="mb-3">
+                        <label for="nombre_empresa" class="form-label">Nombre Empresa *</label>
+                        <input type="text" class="form-control" id="nombre_empresa" name="nombre_empresa" value="{{ empresa.nombre_empresa }}" required>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('crud.lista_empresas') }}" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-danger">Empresa no encontrada</div>
+        <a href="{{ url_for('crud.lista_empresas') }}" class="btn btn-secondary">Volver a la lista</a>
+    {% endif %}
+</div>
+{% endblock maincontent %}

@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="containerForm">
+                <h1 class="text-center mb-4">Agregar Detalle de Falla</h1>
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="falla" class="form-label">Tipo de Falla:</label>
+                        <select name="falla" id="falla" class="form-select">
+                            {% for falla in falla %}
+                                <option value="{{ falla.id_falla }}">{{ falla.nombre_falla }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="nombre_df" class="form-label">Nombre del detalle:</label>
+                        <input type="text" name="nombre_df" id="nombre_df" class="form-control" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success btn-block">Agregar Detalle</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock maincontent %}

@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% block headcontent %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+{% endblock headcontent %}
+{% block body %}
+<button class="btn btn-success toggler2" onclick="toggleSidebarOpciones()">⚙️</button>
+<div class="sidebar2" id="sidebar2">
+    <button type="button" class="btn-close close-btn2" aria-label="Close" onclick="toggleSidebarOpciones()"></button>
+    <div class="sidebar-content">
+        <h1 class="mb-4">Editar Área</h1>
+        <form method="post">
+            <div class="mb-3 ">
+                <label for="nombre_area">Nombre del Área:</label>
+                <input type="text" class="form-control" id="nombre_area" name="nombre_area"
+                    value="{{ area.nombre_area }}" required>
+            </div>
+            <div class="mb-3">
+                <label for="tipo_area">Selecciona el tipo de área:</label>
+                <select name="tipo_area" id="tipo_area" class="form-select" required>
+                    <option value="cuadrantes" {% if area.tipo_area=='cuadrantes' %}selected{% endif %}>
+                        Cuadrantes</option>
+                    <option value="sectores" {% if area.tipo_area=='sectores' %}selected{% endif %}>Sectores
+                    </option>
+                    <option value="z_trabajos" {% if area.tipo_area=='z_trabajos' %}selected{% endif %}>
+                        Zonas de trabajo</option>
+                    <option value="cercos" {% if area.tipo_area=='cercos' %}selected{% endif %}>Cercos
+                    </option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <button type="submit" class="btn btn-success">Guardar Cambios</button>
+            </div>
+            <input type="hidden" id="coordenadas_text" name="nuevas_coordenadas" value="{{ coordenadas_json }}" />
+            <input type="hidden" id="coordenadas" name="coordenadas" value="{{ coordenadas_json }}" />
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block maincontent %}
+    <div id="map" class="mapa" style="height: 800px; margin-top: 40px;"></div>
+{% endblock maincontent %}
+{% block scripts %}
+<script>
+    var coordenadas_area = {{ coordenadas_area | tojson }};
+    var tipo_area_select = document.getElementById('tipo_area');
+    var map = L.map('map').setView([coordenadas_area[0][0], coordenadas_area[0][1]], 16);
+    var markers = [];
+    var polygon;
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    var latlngs = [];
+    coordenadas_area.forEach(function(coord) {
+        latlngs.push([coord[0], coord[1]]);
+    });
+
+    // Crear el polígono inicial
+    polygon = L.polygon(latlngs, {color: getColor(tipo_area_select.value), fillColor: getColor(tipo_area_select.value), fillOpacity: 0.5}).addTo(map);
+
+    // Función para actualizar el color de los marcadores personalizados
+    function updateMarkersColor(color) {
+        markers.forEach(function(marker) {
+            marker.setIcon(L.divIcon({
+                className: 'custom-marker',
+                iconSize: [12, 12],
+                iconAnchor: [6, 6],
+                html: '<div style="width: 12px; height: 12px; background-color: ' + color + '; border: 2px solid white; border-radius: 50%; cursor: pointer;"></div>'
+            }));
+        });
+    }
+
+    // Función para actualizar las coordenadas al arrastrar un marcador
+    function updateMarkerCoordinates(marker, index) {
+        marker.on('dragend', function(event) {
+            latlngs[index] = [event.target._latlng.lat, event.target._latlng.lng];
+            updateCoordinates(latlngs);
+            updatePolygon(latlngs);
+        });
+    }
+
+    // Agregar marcadores existentes al mapa con icono personalizado y permitir su edición
+    latlngs.forEach(function(latlng, index) {
+        var marker = L.marker(latlng, {
+            icon: L.divIcon({
+                className: 'custom-marker',
+                iconSize: [12, 12],
+                iconAnchor: [6, 6],
+                html: '<div style="width: 12px; height: 12px; background-color: ' + getColor(tipo_area_select.value) + '; border: 2px solid white; border-radius: 50%; cursor: pointer;"></div>'
+            }),
+            draggable: true // Permitir arrastrar el marcador
+        }).addTo(map);
+        markers.push(marker);
+        updateMarkerCoordinates(marker, index); // Actualizar las coordenadas al arrastrar el marcador
+    });
+
+    // Agregar un marcador al hacer doble clic en el mapa
+    map.on('dblclick', function(event) {
+        var marker = L.marker(event.latlng, {
+            draggable: true // Permitir arrastrar el marcador
+        }).addTo(map);
+        markers.push(marker);
+        latlngs.push([event.latlng.lat, event.latlng.lng]);
+        updateCoordinates(latlngs);
+        updatePolygon(latlngs);
+        updateMarkerCoordinates(marker, latlngs.length - 1); // Actualizar las coordenadas al arrastrar el marcador
+    });
+
+    // Deshabilitar el zoom al hacer doble clic
+    map.doubleClickZoom.disable();
+
+    // Eliminar la última coordenada al hacer clic derecho
+    map.on('contextmenu', function(event) {
+        if (latlngs.length > 0) {
+            if (markers.length > 0) {
+                var lastMarker = markers.pop();
+                lastMarker.remove();
+            }
+            latlngs.pop();
+            updateCoordinates(latlngs);
+            updatePolygon(latlngs);
+        }
+    });
+
+    // Actualizar las coordenadas en el formulario
+    function updateCoordinates(latlngs) {
+        document.getElementById('coordenadas_text').value = JSON.stringify(latlngs);
+        document.getElementById('coordenadas').value = JSON.stringify(latlngs);
+    }
+
+    // Actualizar el polígono en el mapa
+    function updatePolygon(latlngs) {
+        if (latlngs.length > 0) {
+            if (polygon) {
+                polygon.setLatLngs(latlngs);
+            } else {
+                polygon = L.polygon(latlngs, {color: getColor(tipo_area_select.value), fillColor: getColor(tipo_area_select.value), fillOpacity: 0.5}).addTo(map);
+            }
+
+            // Eliminar los marcadores existentes antes de agregar los nuevos marcadores personalizados
+            markers.forEach(function(marker) {
+                marker.remove();
+            });
+            markers = [];
+
+            // Agregar los marcadores personalizados
+            latlngs.forEach(function(latlng, index) {
+                var marker = L.marker(latlng, {
+                    icon: L.divIcon({
+                        className: 'custom-marker',
+                        iconSize: [12, 12],
+                        iconAnchor: [6, 6],
+                        html: '<div style="width: 12px; height: 12px; background-color: ' + getColor(tipo_area_select.value) + '; border: 2px solid white; border-radius: 50%; cursor: pointer;"></div>'
+                    }),
+                    draggable: true // Permitir arrastrar el marcador
+                }).addTo(map);
+                markers.push(marker);
+                updateMarkerCoordinates(marker, index); // Actualizar las coordenadas al arrastrar el marcador
+            });
+        } else if (polygon) {
+            map.removeLayer(polygon);
+            polygon = null;
+        }
+    }
+
+    // Obtener el color según el tipo de área seleccionado
+    function getColor(tipo_area) {
+        switch (tipo_area) {
+            case 'cuadrantes':
+                return 'blue';
+            case 'sectores':
+                return 'green';
+            case 'z_trabajos':
+                return 'red';
+            case 'cercos':
+                return 'black';
+            default:
+                return 'gray';
+        }
+    }
+
+    // Actualizar el polígono y los marcadores cuando cambia la selección del tipo de área
+    tipo_area_select.addEventListener('change', function() {
+        if (polygon) {
+            var selectedColor = getColor(this.value);
+            polygon.setStyle({color: selectedColor, fillColor: selectedColor});
+            updateMarkersColor(selectedColor);
+        }
+    });
+</script>
+{% endblock scripts %}

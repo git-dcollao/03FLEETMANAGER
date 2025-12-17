@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="containerForm">
+                <h1 class="mb-4">Editar {{ tv.nombre_tv }}</h1>
+                <form method="post" action="{{ url_for('crud.editar_tv', id_tv=tv.id_tv) }}" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="nombre_tv">Nombre Tipo Vehiculo:</label>
+                        <input type="text" class="form-control" id="nombre_tv" name="nombre_tv" value="{{ tv.nombre_tv }}" required>
+                    </div>
+                    <button type="submit" class="btn btn-success">Guardar Cambios</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock maincontent %}

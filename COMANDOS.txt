@@ -1,0 +1,8 @@
+env\Scripts\activate.bat
+flask run
+o
+flask --app basurero run --debug
+
+USUARIO: SUPERUSUARIO
+CONTRASEÑA SIN ENCRIPTAR: Superusuario8024012
+CONTRASEÑA ENCRIPTADA: scrypt:32768:8:1$wnxBkzaB8ADCOyna$4cde8bcf3419bce824148b419c1e6e0355cf139e1a39c9397425c41ee54267e1f24df7ba40389868318b3b9fa9f338f534a14dc3d6b105468886388883fb3324

@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="text-center">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h1 class="display-6 mb-6">Seleccione a donde redirigirse</h1>
+        </div>
+    </div>
+    <div class="option-container">
+        <div class="row justify-content-center">
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/personal/agregar_personal.png" alt="Ingresar Personal">
+                <!-- <h5 class="mt-3">Ingresar Personal</h5> -->
+                <a href="{{ url_for('creation.crear_personal') }}" class="btn btn-success">Ingresar Personal</a>
+            </div>
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/personal/lista.png" alt="Lista de Personal">
+                <!-- <h5 class="mt-3">Lista de Personal</h5> -->
+                <a href="{{ url_for('crud.lista_personal') }}" class="btn btn-success">Lista de Personal</a>
+            </div>
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/personal/agregar_personal.png" alt="Registrar Cuenta">
+                <!-- <h5 class="mt-3">Registrar Cuenta</h5> -->
+                <a href="{{ url_for('auth.crear_usuario') }}" class="btn btn-success">Registrar Cuenta</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock maincontent %}

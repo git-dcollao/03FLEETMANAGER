@@ -1,0 +1,50 @@
+services:
+  # Servicio de base de datos MySQL
+  db:
+    image: mysql:8.0
+    container_name: fleet_manager_db
+    environment:
+      MYSQL_ROOT_PASSWORD: contra123
+      MYSQL_DATABASE: fleet_manager
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - fleet_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pcontra123"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+
+  # Servicio de la aplicación Flask
+  app:
+    build: .
+    container_name: fleet_manager_app
+    environment:
+      FLASK_ENV: production
+      DB_USER: root
+      DB_PASSWORD: contra123
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: fleet_manager
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app
+      - ./static:/app/static
+      - ./templates:/app/templates
+    networks:
+      - fleet_network
+    command: python /wait-for-db.py db python basurero.py
+
+networks:
+  fleet_network:
+    driver: bridge
+
+volumes:
+  db_data:

@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="container mt-5">
+    <h2>Lista de Personal</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th style="padding-right: 65px;">RUT</th>
+                <th>Nombres</th>
+                <th>Apellido Paterno</th>
+                <th>Apellido Materno</th>
+                <th>Fecha de Contrato</th>
+                <th>Teléfono</th>
+                <th>Estado</th>
+                <th>Cargo</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for persona in personal %}
+                <tr>
+                    <td>{{ persona.rut_personal }}</td>
+                    <td>{{ persona.nombre_personal }}</td>
+                    <td>{{ persona.apellido_paterno }}</td>
+                    <td>{{ persona.apellido_materno }}</td>
+                    <td>{{ persona.fecha_contrato }}</td>
+                    <td>{{ persona.fono }}</td>
+                    <td>{{ persona.estado }}</td>
+                    <td>{{ persona.cargo.nombre_cargo }}</td>
+                    <td><a href="{{ url_for('crud.crud_personal', id_personal=persona.id_personal) }}" class="btn btn-success">Editar Personal</a></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock maincontent %}

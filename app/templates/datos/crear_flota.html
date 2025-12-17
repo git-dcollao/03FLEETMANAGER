@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="containerForm">
+                <h1 class="mb-4 text-center">Agregar Flota</h1>
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="nombre_flota">Nombre de la flota:</label>
+                        <input type="text" name="nombre_flota" id="nombre_flota" class="form-control" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success">Agregar Flota</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock maincontent %}

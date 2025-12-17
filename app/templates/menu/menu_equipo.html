@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="text-center">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h1 class="display-6 mb-6">Seleccione a donde redirigirse</h1>
+        </div>
+    </div>
+    <div class="option-container">
+        <div class="row justify-content-center">
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/equipo_personal/anadir_equipo.png" alt="ingresar">
+                <!-- <h5 class="card-title">Ingresar Equipo</h5> -->
+                <a href="{{ url_for('creation.crear_equipo') }}" class="btn btn-success">Ingresar Equipo</a>
+            </div>
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/equipo_personal/lista.png" alt="lista">
+                <!-- <h5 class="card-title">Listas de Equipos</h5> -->
+                <a href="{{ url_for('crud.lista_equipos') }}" class="btn btn-success">Listas de Equipos</a>
+            </div>
+        </div>
+    </div>
+</div> 
+{% endblock maincontent %}

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informe General</title>
+    <link rel="stylesheet" href="../static/CSS/estilo.css">
+    <link rel="icon" href="../static/IMAGES/logo_hospicio.png"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/json2/20160511/json2.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <script src="../static/JS/scripts.js"></script>
+</head>
+<body class="bg-light">
+    <header class="d-flex justify-content-between align-items-center" style="padding-top: 10px; margin-left: 10px;">
+        <a href="https://maho.cl/web2/"><img src="../../static/IMAGES/logo_hospicio.png" alt="logo_hospicio" class="logo"></a>
+        <div class="d-flex" style="padding-right: 5px;">
+            <a href="{{ url_for('index') }}" class="btn btn-success mx-2">Volver al inicio</a>
+            <a href="{{ url_for('menu_coordenadas') }}" class="btn btn-success mx-2">Menú Coordenadas</a>
+            <a href="{{ url_for('menu_vehiculo') }}" class="btn btn-success mx-2">Menú Vehiculo</a>
+            <a href="{{ url_for('menu_personal') }}" class="btn btn-success mx-2">Menú Personal</a>
+            <a href="{{ url_for('menu_equipo') }}" class="btn btn-success mx-2">Menú Equipo</a>
+            <a href="{{ url_for('logout') }}" class="btn btn-danger mx-2">Cerrar sesión</a>
+        </div>
+    </header>
+    <div class="container mt-5">
+        <h1 class="mb-4">Informe del vehiculo {{ vehiculo.patente}}</h1>
+        <form method="POST" action="">
+            <div class="row">
+                <div class="col-md-4">
+                    <label for="fecha" class="form-label">Selecciona una fecha:</label>
+                    <select id="fecha" name="fecha" class="form-select">
+                        <option value="mostrarTodo">Mostrar Todo</option>
+                        {% for fecha in fechas_disponibles %}
+                            {% if fecha == fecha_seleccionada %}
+                                <option value="{{ fecha }}" selected>{{ fecha }}</option>
+                            {% else %}
+                                <option value="{{ fecha }}">{{ fecha }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-success" style="margin-top: 10px;">Mostrar Informe</button>
+                </div>
+            </div>
+        </form>
+
+        <form class="row g-3 needs-validation" novalidate method="POST" action="">
+            <div class="col-md-4">
+                <label for="fecha" class="form-label">Selecciona una fecha:</label>
+                <select id="fecha" name="fecha" class="form-select" required>
+                    <option value="mostrarTodo">Mostrar Todo</option>
+                    {% for fecha in fechas_disponibles %}
+                        {% if fecha == fecha_seleccionada %}
+                            <option value="{{ fecha }}" selected>{{ fecha }}</option>
+                        {% else %}
+                            <option value="{{ fecha }}">{{ fecha }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+                <div class="invalid-feedback">
+                    Debes seleccionar una fecha
+                </div>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-success" style="margin-top: 10px;">Mostrar Informe</button>
+            </div>
+        </form>
+
+
+        <table class="table" style="border: 1px; margin-top: 10px;">
+            <thead>
+                <tr>
+                    <th>Tiempo activo</th>
+                    <th>Tiempo detenido</th>
+                    <th>Km recorridos</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        {{ tiempo_activo }}
+                    </td>
+                    <td>
+                        {{ tiempo_detenido }}
+                    </td>
+                    <td>
+                        {{ distancia_total }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="table" style="border: 1px;">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Hora</th>
+                    <th>Latitud</th>
+                    <th>Longitud</th>
+                    <th>Distancia</th>
+                    <th>Velocidad</th>
+                    <th>Tiempo</th>
+                    <th>Estado</th>
+                    <th>Áreas</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for data in informe_data %}
+                <tr>
+                    <td>{{ data.fecha }}</td>
+                    <td>{{ data.hora }}</td>
+                    <td>{{ data.latitud }}</td>
+                    <td>{{ data.longitud }}</td>
+                    <td>{{ data.distancia }}</td>
+                    <td>{{ data.velocidad }}</td>
+                    <td>{{ data.tiempo }}</td>
+                    <td>{{ data.estado }}</td>
+                    <td>{{ data.tipos_area }} - {{ data.nombres_area }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <footer>
+        <h4>Municipalidad de Alto Hospicio</h4>
+        <p>Avenida Ramón Pérez Opazo # 3125 | Oficina de Partes: +57 2583000 | Emergencias: +57 2583050</p>
+    </footer>
+</body>
+</html>

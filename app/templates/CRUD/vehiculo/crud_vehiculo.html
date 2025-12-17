@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="text-center">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h1 class="display-6 mb-6">Opciones para el Vehículo {{ vehiculo.patente }}</h1>
+        </div>
+    </div>
+    <div class="option-container">
+        <div class="row justify-content-center">
+            <div class="col-md-3 mb-4">
+                <img src="../../../static/IMAGES/vehiculo/editar.png" class="card-img-top" alt="ingresar">
+                <!-- <h5 class="card-title"></h5> -->
+                <a href="{{ url_for('crud.editar_vehiculo', id_vehiculo=vehiculo.id_vehiculo) }}" class="btn btn-success">Editar Vehículo</a>
+            </div>
+            <div class="col-md-3 mb-4">
+                <img src="../../../static/IMAGES/vehiculo/eliminar.png" class="card-img-top" alt="carga">
+                <!-- <h5 class="card-title"></h5> -->
+                <a href="{{ url_for('crud.eliminar_vehiculo', id_vehiculo=vehiculo.id_vehiculo) }}" class="btn btn-danger">Eliminar Vehículo</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock maincontent %}

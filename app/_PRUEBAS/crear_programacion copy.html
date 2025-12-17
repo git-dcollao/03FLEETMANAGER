@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="containerForm">
+                <h1 class="mb-4 text-center">Crear Programación</h1>
+                <form method="post" action="{{ url_for('crear_programacion') }}">
+                    <div class="mb-3">
+                        <label for="nombre_personal">Supervisor:</label>
+                        <select class="form-control" id="nombre_personal" name="nombre_personal" required>
+                            {% for persona in personal %}
+                                <option value="{{ persona.id_personal }}">{{ persona.nombre_personal }} {{ persona.apellido_paterno }} {{ persona.apellido_materno }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="turno">Turno:</label>
+                        <select class="form-control" id="turno" name="turno" required>
+                            {% for turno in turnos %}
+                                <option value="{{ turno.id_turno }}">{{ turno.nombre_turno }} ({{ turno.horario_inicio }} - {{ turno.horario_termino }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="fecha_programacion">Fecha:</label>
+                                <input type="date" class="form-control" id="fecha_programacion" name="fecha_programacion" required>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="vehiculo">Vehículo:</label>
+                                <select class="form-control" id="vehiculo" name="vehiculo" required>
+                                    {% for vehiculo in vehiculos %}
+                                        <option value="{{ vehiculo.id_vehiculo }}">{{ vehiculo.patente }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="nombre_area">Área asignada:</label>
+                                <select class="form-control" id="nombre_area" name="nombre_area" required>
+                                    {% for area in areas %}
+                                        <option value="{{ area.id_area }}">{{ area.nombre_area }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="equipo">Equipo:</label>
+                                <select class="form-control" id="equipo" name="equipo" required>
+                                    {% for equipo in equipos %}
+                                        <option value="{{ equipo.id_equipo }}">{{ equipo.nombre_equipo }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <div class="mb-3">
+                                <div id="personal-container">
+                                    <div class="integrante mb-3">
+                                        <div class="row align-items-center"> <!-- Alineación vertical -->
+                                            <div class="col">
+                                                <label for="id_personal">Personal:</label>
+                                                <select name="id_personal" class="form-select" required>
+                                                    {% for persona in personales %}
+                                                        <option value="{{ persona.id_personal }}">{{ persona.nombre_personal }} {{ persona.apellido_paterno }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="col">
+                                                <div class="mb-3">
+                                                    <label for="rol">Rol:</label>
+                                                    <select class="form-select" id="rol" name="rol" required>
+                                                        {% for rol in roles %}
+                                                            <option value="{{ rol.id_rol }}">{{ rol.nombre_rol }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col">
+                                                <button type="button" class="btn btn-danger btn-remove" onclick="eliminarIntegrante(this)">Eliminar</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success">Crear Programación</button>
+                    <button type="button" class="btn btn-success" onclick="agregarCampo()">Agregar Integrante</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock maincontent %}
+{% block scripts %}
+<script>
+    function agregarCampo() {
+        var container = document.getElementById('personal-container');
+        var newDiv = document.createElement('div');
+        newDiv.innerHTML = `<div id="personal-container">
+                                <div class="integrante mb-3">
+                                    <div class="row align-items-center">
+                                        <div class="col">
+                                            <label for="id_personal">Personal:</label>
+                                            <select name="id_personal" class="form-select" required>
+                                                {% for persona in personales %}
+                                                    <option value="{{ persona.id_personal }}">{{ persona.nombre_personal }} {{ persona.apellido_paterno }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col">
+                                            <div class="mb-3">
+                                                <label for="rol">Rol:</label>
+                                                <select class="form-select" id="rol" name="rol" required>
+                                                    {% for rol in roles %}
+                                                        <option value="{{ rol.id_rol }}">{{ rol.nombre_rol }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col">
+                                            <button type="button" class="btn btn-danger btn-remove" onclick="eliminarIntegrante(this)">Eliminar</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>`;
+        container.appendChild(newDiv);
+
+        var rolContainer = document.getElementById('rol-container');
+        var newRolDiv = document.createElement('div');
+        newRolDiv.innerHTML = `<div class="integrante mb-3">
+                                    <div class="row align-items-center">
+                                        <div class="col">
+                                            <select class="form-select" id="rol" name="rol" required>
+                                                {% for rol in roles %}
+                                                    <option value="{{ rol.id_rol }}">{{ rol.nombre_rol }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>`;
+        rolContainer.appendChild(newRolDiv);
+    }
+
+    function eliminarIntegrante(button) {
+        var container = button.closest('.integrante');
+        var rolContainer = document.getElementById('rol-container');
+        container.remove();
+        // Eliminar el rol asociado
+        rolContainer.removeChild(rolContainer.lastElementChild);
+    }
+</script>
+{% endblock scripts %}

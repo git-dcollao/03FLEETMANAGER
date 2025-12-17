@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="container mt-5">
+    <h2>Lista de Areas</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Tipo de Area</th>
+                <th>Nombre</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for area in areas %}
+                <tr>
+                    <td>{% if area.tipo_area == 'z_trabajos' %}zona de trabajos{% else %}{{ area.tipo_area }}{% endif %}</td>
+                    <td>{{ area.nombre_area }}</td>
+                    <td><a href="{{ url_for('crud.crud_area', id_area=area.id_area) }}" class="btn btn-success">Editar Área</a></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock maincontent %}

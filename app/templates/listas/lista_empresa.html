@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="container mt-5">
+    <h2>Lista de Empresas</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for empresa in empresa %}
+                <tr>
+                    <td>{{ empresa.nombre_empresa }}</td>
+                    <td><a href="#" class="btn btn-success">Editar empresa</a></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock maincontent %}

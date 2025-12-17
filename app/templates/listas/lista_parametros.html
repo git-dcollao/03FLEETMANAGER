@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="container mt-5">
+    <h2>Lista de Parametros</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Minutos</th>
+                <th>Distancia m</th>
+                <th>Velocidad km/h</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for parametro in parametro %}
+                <tr>
+                    <td>{{ parametro.nombre_parametro }}</td>
+                    <td>{{ parametro.segundos_parametro // 60}}</td>
+                    <td>{{ parametro.distancia_parametro}}</td>
+                    <td>{{ parametro.velocidad_parametro / 3.6}}</td>
+                    <td><a href="{{ url_for('crud.crud_parametro', id_parametro=parametro.id_parametro) }}" class="btn btn-success">Editar Parametro</a></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock maincontent %}

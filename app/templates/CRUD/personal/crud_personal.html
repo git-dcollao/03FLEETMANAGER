@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="text-center">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h1 class="display-6 mb-6">Opciones para el Personal {{ personal.nombre_personal }}</h1>
+        </div>
+    </div>
+    <div class="option-container">
+        <div class="row justify-content-center">
+            <div class="col-md-3 mb-4">
+                <img src="../../../static/IMAGES/personal/editar.png" class="card-img-top" alt="editar">
+                <!-- <h5 class="card-title">Editar Personal</h5> -->
+                <a href="{{ url_for('crud.editar_personal', id_personal=personal.id_personal) }}" class="btn btn-success">Editar Personal</a>
+            </div>
+            <div class="col-md-3 mb-4">
+                <img src="../../../static/IMAGES/personal/eliminar.png" class="card-img-top" alt="eliminar">
+                <!-- <h5 class="card-title">Eliminar Personal</h5> -->
+                <a href="{{ url_for('crud.eliminar_personal', id_personal=personal.id_personal) }}" class="btn btn-danger">Eliminar Personal</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock maincontent %}

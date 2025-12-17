@@ -1,0 +1,559 @@
+{% extends 'base.html' %}
+{% block headcontent %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/json2/20160511/json2.js"></script>
+{% endblock headcontent %}
+{% block body %}
+<button class="btn btn-success toggler2" onclick="toggleSidebarOpciones()">⚙️</button>
+
+<!-- Modal de Información -->
+<div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="infoModalLabel">📍 Instrucciones - Crear Áreas</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size: 16px; line-height: 1.8;">
+          <h5><strong>Para crear áreas:</strong></h5>
+          <ul style="margin-left: 20px;">
+            <li>Escribe el nombre del área (ej: "Sector Norte")</li>
+            <li>Selecciona el tipo de área (Cuadrantes, Sectores, Zonas de trabajo o Cercos)</li>
+            <li>Usa los controles de visibilidad para ver/ocultar áreas existentes</li>
+          </ul>
+
+          <h5 style="margin-top: 20px;"><strong>Cómo dibujar el área en el mapa:</strong></h5>
+          <ul style="margin-left: 20px;">
+            <li><strong>Doble click</strong> = Agregar punto</li>
+            <li><strong>Click derecho</strong> = Deshacer último punto</li>
+          </ul>
+
+          <p style="margin-top: 20px; color: #666;">
+            Los puntos forman un polígono automáticamente
+          </p>
+
+          <p style="margin-top: 15px; color: #28a745; font-weight: bold;">
+            ✓ Crear Área: Click en el botón para guardar
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sidebar2" id="sidebar2">
+    <button type="button" class="btn-close close-btn2" aria-label="Close" onclick="toggleSidebarOpciones()"></button>
+    <div class="sidebar-content">
+        <h1 class="mb-4">Crear Área</h1>
+        <form method="post">
+            <div class="mb-3">
+                <label for="nombre_area">Nombre del Área:</label>
+                <input type="text" class="form-control" id="nombre_area" name="nombre_area" required>
+            </div>
+            <div class="mb-3">
+                <label for="tipo_area">Tipo de área:</label>
+                <select name="tipo_area" id="tipo_area" class="form-select" required>
+                    <option value="cuadrantes">Cuadrantes</option>
+                    <option value="sectores">Sectores</option>
+                    <option value="z_trabajos">Zonas de trabajo</option>
+                    <option value="cercos">Cercos</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <button type="submit" class="btn btn-success w-100">Crear Área</button>
+            </div>
+            <div class="mb-3">
+                <label for="blanck"></label>
+                <button type="button" class="btn btn-info w-100" data-bs-toggle="modal" data-bs-target="#infoModal">
+                    ❓ Ver Instrucciones
+                </button>
+            </div>
+
+            <input type="hidden" id="coordenadas_text" name="nuevas_coordenadas" />
+            <input type="hidden" id="coordenadas" name="coordenadas" />
+            <input type="hidden" id="id_area" name="id_area" value="{{ id_area }}" />
+        </form>
+
+        <!-- Controles de Visibilidad -->
+        <hr class="my-4">
+        <h5 class="mb-3">Mostrar/Ocultar Áreas</h5>
+        
+        <!-- Cuadrantes -->
+        <div class="mb-3">
+            <div class="form-check">
+                <input class="form-check-input area-toggle" type="checkbox" id="toggle_cuadrantes" 
+                       data-area-type="cuadrantes" checked>
+                <label class="form-check-label" for="toggle_cuadrantes">
+                    <span style="color: blue;">■</span> Cuadrantes
+                </label>
+            </div>
+            <div id="cuadrantes_list" class="ms-4" style="font-size: 12px; max-height: 150px; overflow-y: auto;">
+            </div>
+        </div>
+
+        <!-- Sectores -->
+        <div class="mb-3">
+            <div class="form-check">
+                <input class="form-check-input area-toggle" type="checkbox" id="toggle_sectores" 
+                       data-area-type="sectores" checked>
+                <label class="form-check-label" for="toggle_sectores">
+                    <span style="color: green;">■</span> Sectores
+                </label>
+            </div>
+            <div id="sectores_list" class="ms-4" style="font-size: 12px; max-height: 150px; overflow-y: auto;">
+            </div>
+        </div>
+
+        <!-- Zonas de Trabajo -->
+        <div class="mb-3">
+            <div class="form-check">
+                <input class="form-check-input area-toggle" type="checkbox" id="toggle_z_trabajos" 
+                       data-area-type="z_trabajos" checked>
+                <label class="form-check-label" for="toggle_z_trabajos">
+                    <span style="color: red;">■</span> Zonas de Trabajo
+                </label>
+            </div>
+            <div id="z_trabajos_list" class="ms-4" style="font-size: 12px; max-height: 150px; overflow-y: auto;">
+            </div>
+        </div>
+
+        <!-- Cercos -->
+        <div class="mb-3">
+            <div class="form-check">
+                <input class="form-check-input area-toggle" type="checkbox" id="toggle_cercos" 
+                       data-area-type="cercos" checked>
+                <label class="form-check-label" for="toggle_cercos">
+                    <span style="color: black;">■</span> Cercos
+                </label>
+            </div>
+            <div id="cercos_list" class="ms-4" style="font-size: 12px; max-height: 150px; overflow-y: auto;">
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block maincontent %}
+    <div id="map" class="mapa" style="height: 800px; margin-top: 40px;"></div>
+{% endblock maincontent %}
+
+{% block scripts %}
+<script>
+    // Datos de áreas desde el servidor
+    let areasData;
+    try {
+        const jsonString = '{{ areas_json | safe }}';
+        console.log('JSON String:', jsonString);
+        areasData = JSON.parse(jsonString);
+        console.log('Areas Data:', areasData);
+    } catch (e) {
+        console.error('Error parsing JSON:', e);
+        areasData = {
+            cuadrantes: [],
+            sectores: [],
+            z_trabajos: [],
+            cercos: []
+        };
+    }
+    
+    document.addEventListener('DOMContentLoaded', function () {
+        initializeMapWithLayers();
+        populateAreasList();
+    });
+
+    function populateAreasList() {
+        try {
+            // Llenar listas de cuadrantes
+            const cuadrantesHtml = areasData.cuadrantes.map(a => 
+                `<div><small>📍 ${a.nombre}</small></div>`
+            ).join('');
+            document.getElementById('cuadrantes_list').innerHTML = cuadrantesHtml || '<small class="text-muted">Sin áreas</small>';
+
+            // Llenar listas de sectores
+            const sectoresHtml = areasData.sectores.map(a => 
+                `<div><small>📍 ${a.nombre}</small></div>`
+            ).join('');
+            document.getElementById('sectores_list').innerHTML = sectoresHtml || '<small class="text-muted">Sin áreas</small>';
+
+            // Llenar listas de zonas
+            const zonasHtml = areasData.z_trabajos.map(a => 
+                `<div><small>📍 ${a.nombre}</small></div>`
+            ).join('');
+            document.getElementById('z_trabajos_list').innerHTML = zonasHtml || '<small class="text-muted">Sin áreas</small>';
+
+            // Llenar listas de cercos
+            const cercosHtml = areasData.cercos.map(a => 
+                `<div><small>📍 ${a.nombre}</small></div>`
+            ).join('');
+            document.getElementById('cercos_list').innerHTML = cercosHtml || '<small class="text-muted">Sin áreas</small>';
+        } catch (e) {
+            console.error('Error populating areas list:', e);
+        }
+    }
+
+    function initializeMapWithLayers() {
+        console.log('Iniciando initializeMapWithLayers');
+        console.log('areasData:', areasData);
+        
+        let map = L.map('map', { locateControl: false });
+        map.doubleClickZoom.disable();
+        
+        // Establecer vista por defecto si no hay geolocalización
+        map.setView([-33.0, -71.5], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Intentar geolocalización
+        navigator.geolocation.getCurrentPosition(function (position) {
+            let userLatLng = [position.coords.latitude, position.coords.longitude];
+            map.setView(userLatLng, 13);
+            console.log('Geolocalización exitosa:', userLatLng);
+        }, function (error) {
+            console.warn("Error obteniendo la localización:", error.message);
+            // Se mantiene la vista por defecto
+        });
+
+        // Almacenar capas por tipo
+        let areasLayers = {
+            cuadrantes: [],
+            sectores: [],
+            z_trabajos: [],
+            cercos: []
+        };
+
+        // Colores por tipo de área
+        const areaColors = {
+            cuadrantes: 'blue',
+            sectores: 'green',
+            z_trabajos: 'red',
+            cercos: 'black'
+        };
+
+        // Cargar áreas existentes en el mapa
+        console.log('Cargando áreas en el mapa...');
+        let totalAreas = 0;
+        let selectedPolygon = null; // Para rastrear el polígono seleccionado
+        let editingPolygon = null; // Polígono en modo edición
+        let editMarkers = []; // Marcadores de edición
+        
+        Object.keys(areasData).forEach(areaType => {
+            console.log(`Procesando ${areaType}:`, areasData[areaType]);
+            areasData[areaType].forEach(area => {
+                console.log(`Área: ${area.nombre}, coordenadas:`, area.coordenadas);
+                if (area.coordenadas && area.coordenadas.length > 0) {
+                    const color = areaColors[areaType];
+                    console.log(`Dibujando ${area.nombre} en color ${color}`);
+                    const polygon = L.polygon(area.coordenadas, {
+                        fillOpacity: 0.5,
+                        fillColor: color,
+                        color: color,
+                        weight: 2
+                    }).bindPopup(`<strong>${area.nombre}</strong><br><small>Tipo: ${areaType}</small>`).addTo(map);
+                    
+                    // Almacenar datos del área en el polígono
+                    polygon.areaData = {
+                        id: area.id,
+                        nombre: area.nombre,
+                        tipo: areaType,
+                        color: color
+                    };
+                    
+                    // Agregar interactividad al polígono
+                    polygon.on('mouseover', function() {
+                        if (editingPolygon !== this) {
+                            this.setStyle({
+                                weight: 4,
+                                fillOpacity: 0.8,
+                                dashArray: '5, 5'
+                            });
+                        }
+                    });
+                    
+                    polygon.on('mouseout', function() {
+                        // Si está seleccionado, mantener el estilo destacado
+                        if (this === selectedPolygon && editingPolygon !== this) {
+                            this.setStyle({
+                                weight: 4,
+                                fillOpacity: 0.8
+                            });
+                        } else if (editingPolygon !== this) {
+                            this.setStyle({
+                                weight: 2,
+                                fillOpacity: 0.5,
+                                dashArray: ''
+                            });
+                        }
+                    });
+                    
+                    polygon.on('click', function() {
+                        // Si ya hay uno en edición, cancelar
+                        if (editingPolygon && editingPolygon !== this) {
+                            cancelEditPolygon();
+                        }
+                        
+                        // Si está seleccionado, entrar en modo edición
+                        if (selectedPolygon === this) {
+                            enterEditMode(this);
+                        } else {
+                            // Deseleccionar anterior si existe
+                            if (selectedPolygon && selectedPolygon !== this) {
+                                selectedPolygon.setStyle({
+                                    weight: 2,
+                                    fillOpacity: 0.5,
+                                    dashArray: ''
+                                });
+                            }
+                            
+                            // Seleccionar este
+                            selectedPolygon = this;
+                            this.setStyle({
+                                weight: 4,
+                                fillOpacity: 0.8,
+                                color: '#FF0000'
+                            });
+                        }
+                    });
+                    
+                    areasLayers[areaType].push(polygon);
+                    totalAreas++;
+                }
+            });
+        });
+        console.log(`Total de áreas dibujadas: ${totalAreas}`);
+
+        // Función para entrar en modo edición
+        function enterEditMode(polygon) {
+            editingPolygon = polygon;
+            const coords = polygon.getLatLngs()[0]; // Obtener coordenadas del polígono
+            
+            // Crear marcadores draggable en cada punto
+            editMarkers = [];
+            coords.forEach((coord, index) => {
+                const marker = L.circleMarker(coord, {
+                    radius: 6,
+                    fillColor: '#FF0000',
+                    color: '#000',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                
+                marker.pointIndex = index;
+                marker.isBeingDragged = false;
+                
+                // Hacer el marcador draggable con mejor lógica
+                marker.on('mousedown', function(e) {
+                    L.DomEvent.stopPropagation(e);
+                    marker.isBeingDragged = true;
+                    map.dragging.disable(); // Desabilitar pan del mapa
+                });
+                
+                map.on('mousemove', function(e) {
+                    if (marker.isBeingDragged) {
+                        const newLatLng = e.latlng;
+                        marker.setLatLng(newLatLng);
+                        coords[marker.pointIndex] = newLatLng;
+                        polygon.setLatLngs([coords]); // Actualizar polígono
+                    }
+                });
+                
+                map.on('mouseup', function() {
+                    if (marker.isBeingDragged) {
+                        marker.isBeingDragged = false;
+                        map.dragging.enable(); // Reabilitar pan del mapa
+                    }
+                });
+                
+                editMarkers.push(marker);
+            });
+            
+            // Mostrar controles de edición
+            showEditControls(polygon);
+        }
+
+        // Función para mostrar controles de edición
+        function showEditControls(polygon) {
+            // Crear contenedor de controles
+            let controlsHtml = `
+                <div id="edit-controls" style="position: fixed; bottom: 20px; left: 20px; background: white; padding: 15px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 1000;">
+                    <div style="margin-bottom: 10px; font-weight: bold;">Editando: ${polygon.areaData.nombre}</div>
+                    <button id="save-edit" class="btn btn-sm btn-success" style="width: 100%; margin-bottom: 5px;">💾 Guardar Cambios</button>
+                    <button id="cancel-edit" class="btn btn-sm btn-secondary" style="width: 100%;">❌ Cancelar</button>
+                    <div id="edit-status" style="margin-top: 10px; font-size: 12px; color: #666;"></div>
+                </div>
+            `;
+            
+            // Remover controles anteriores si existen
+            const oldControls = document.getElementById('edit-controls');
+            if (oldControls) oldControls.remove();
+            
+            document.body.insertAdjacentHTML('beforeend', controlsHtml);
+            
+            // Eventos de los botones
+            document.getElementById('save-edit').addEventListener('click', function() {
+                const newCoords = polygon.getLatLngs()[0];
+                console.log('Guardando coordenadas editadas:', newCoords);
+                
+                // Convertir coordenadas a grados_latitud, grados_longitud
+                const coordsArray = newCoords.map(coord => [coord.lat, coord.lng]);
+                
+                // Llamar endpoint para guardar
+                saveAreaCoordinates(polygon.areaData.id, coordsArray, polygon);
+            });
+            
+            document.getElementById('cancel-edit').addEventListener('click', cancelEditPolygon);
+        }
+
+        // Función para guardar coordenadas en la BD
+        function saveAreaCoordinates(areaId, newCoords, polygon) {
+            const statusDiv = document.getElementById('edit-status');
+            statusDiv.innerText = 'Guardando...';
+            
+            fetch('/api/update_area_coordinates', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    area_id: areaId,
+                    coordinates: newCoords
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    statusDiv.innerText = '✅ ¡Guardado correctamente!';
+                    setTimeout(() => {
+                        cancelEditPolygon();
+                    }, 2000);
+                } else {
+                    statusDiv.innerText = '❌ Error: ' + data.error;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                statusDiv.innerText = '❌ Error al guardar';
+            });
+        }
+
+        // Función para cancelar edición
+        function cancelEditPolygon() {
+            if (editingPolygon) {
+                editingPolygon.setStyle({
+                    weight: 4,
+                    fillOpacity: 0.8
+                });
+            }
+            
+            // Remover marcadores de edición
+            editMarkers.forEach(marker => map.removeLayer(marker));
+            editMarkers = [];
+            editingPolygon = null;
+            
+            // Remover controles
+            const controls = document.getElementById('edit-controls');
+            if (controls) controls.remove();
+        }
+
+        // Controles de visibilidad
+        document.querySelectorAll('.area-toggle').forEach(toggle => {
+            toggle.addEventListener('change', function() {
+                const areaType = this.dataset.areaType;
+                console.log(`Toggle ${areaType}: ${this.checked}`);
+                areasLayers[areaType].forEach(layer => {
+                    if (this.checked) {
+                        map.addLayer(layer);
+                    } else {
+                        map.removeLayer(layer);
+                    }
+                });
+            });
+        });
+
+        // Dibujo en tiempo real
+        let points = [];
+        let markers = [];
+        let polygon;
+
+        map.on('dblclick', function (e) {
+            let latlng = e.latlng;
+            let marker = L.marker(latlng).addTo(map);
+            markers.push(marker);
+            points.push([latlng.lat, latlng.lng]);
+            updateCoordinates();
+            updatePolygon();
+        });
+
+        map.on('contextmenu', function (e) {
+            if (markers.length > 0) {
+                let lastMarker = markers.pop();
+                lastMarker.remove();
+                points.pop();
+                updateCoordinates();
+                updatePolygon();
+            }
+        });
+
+        function updateCoordinates() {
+            document.getElementById('coordenadas_text').value = JSON.stringify(points);
+            document.getElementById('coordenadas').value = JSON.stringify(points);
+        }
+
+        function updatePolygon() {
+            if (polygon) {
+                map.removeLayer(polygon);
+            }
+
+            if (points.length > 0) {
+                let areaType = document.getElementById('tipo_area').value;
+                let color = areaColors[areaType];
+
+                markers.forEach(function (marker) {
+                    marker.setIcon(L.divIcon({
+                        className: 'custom-marker',
+                        iconSize: [12, 12],
+                        iconAnchor: [6, 6],
+                        html: '<div style="width: 12px; height: 12px; background-color: ' + color + '; border: 2px solid white; border-radius: 50%; cursor: default;"></div>'
+                    }));
+                });
+
+                if (points.length > 1) {
+                    polygon = L.polygon(points, { fillOpacity: 0.5, fillColor: color, color: color }).addTo(map);
+                } else {
+                    markers.forEach(function (marker) {
+                        marker.addTo(map);
+                    });
+                }
+            }
+        }
+
+        // Actualizar color del dibujo cuando cambia el tipo de área
+        document.getElementById('tipo_area').addEventListener('change', updatePolygon);
+    }
+
+    function toggleSidebarOpciones() {
+        let sidebar = document.getElementById("sidebar2");
+        let mainContent = document.getElementById("mainContent");
+        let toggler = document.querySelector(".toggler2");
+        let toggler2 = document.querySelector(".toggler");
+        if (sidebar.style.right === "0px") {
+            sidebar.style.right = "-250px";
+            mainContent.style.marginRight = "0";
+            toggler.style.display = "block";
+            toggler2.style.display = "block";
+        } else {
+            sidebar.style.right = "0px";
+            mainContent.style.marginRight = "250px";
+            toggler.style.display = "none";
+            toggler2.style.display = "none";
+        }
+    }
+</script>
+{% endblock scripts %}

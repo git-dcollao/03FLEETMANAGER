@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="container mt-5">
+    <h2>Lista de Vehiculo</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Patente</th>
+                <th>GPS</th>
+                <th>Flota</th>
+                <th>Estado</th>
+                <th>Tipo</th>
+                <th>Foto</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for vehiculo in vehiculo %}
+                <tr>
+                    <td>{{ vehiculo.patente }}</td>
+                    <td>{{ vehiculo.gps }}</td>
+                    <td>{% if vehiculo.flota.nombre_flota %}
+                            {{vehiculo.flota.nombre_flota}}
+                        {% else %}
+                            No se ha asignado flota
+                        {% endif %}
+                    </td>
+                    <td>{{ vehiculo.estado }}</td>
+                    <td>{% if vehiculo.detalle_tv.nombre_dtv %}
+                            {{ vehiculo.detalle_tv.nombre_dtv }}
+                        {% else %}
+                            No se ha seleccionado
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if vehiculo.foto_encoded %}
+                            <img src="data:image/jpeg;base64,{{ vehiculo.foto_encoded }}" alt="Foto" width="100" height="50">
+                        {% else %}
+                            No hay imagen
+                        {% endif %}
+                    </td>
+                    <td><a class="btn btn-success" href="{{ url_for('crud.crud_vehiculo', id_vehiculo=vehiculo.id_vehiculo) }}">Editar Vehiculo</a></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock maincontent %}

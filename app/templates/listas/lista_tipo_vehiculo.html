@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="container mt-5">
+    <h2>Lista de Tipos de Vehiculo</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tv in tv %}
+                <tr>
+                    <td>{{ tv.nombre_tv }}</td>
+                    <td><a href="{{ url_for('crud.crud_tv', id_tv=tv.id_tv) }}" class="btn btn-success">Editar Tipo Vehiculo</a></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock maincontent %}

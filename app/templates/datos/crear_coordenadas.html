@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block headcontent %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/json2/20160511/json2.js"></script>
+{% endblock headcontent %}
+{% block body %}
+<button class="btn btn-success toggler2" onclick="toggleSidebarOpciones()">⚙️</button>
+
+<!-- Modal de Información -->
+<div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="infoModalLabel">📍 Instrucciones - Crear Cuadrantes</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size: 16px; line-height: 1.8;">
+          <h5><strong>Para crear cuadrantes:</strong></h5>
+          <ul style="margin-left: 20px;">
+            <li>Escribe el nombre del cuadrante (ej: "Cuadrante Centro")</li>
+            <li>Selecciona "Cuadrantes" (ya está seleccionado)</li>
+          </ul>
+
+          <h5 style="margin-top: 20px;"><strong>Cómo dibujar el cuadrante en el mapa:</strong></h5>
+          <ul style="margin-left: 20px;">
+            <li><strong>Doble click</strong> = Agregar punto</li>
+            <li><strong>Click derecho</strong> = Deshacer último punto</li>
+          </ul>
+
+          <p style="margin-top: 20px; color: #666;">
+            Los puntos forman un polígono azul automáticamente
+          </p>
+
+          <p style="margin-top: 15px; color: #28a745; font-weight: bold;">
+            ✓ Crear Área: Click en el botón para guardar
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sidebar2" id="sidebar2">
+    <button type="button" class="btn-close close-btn2" aria-label="Close" onclick="toggleSidebarOpciones()"></button>
+    <div class="sidebar-content">
+        <h1 class="mb-4">Crear Área</h1>
+        <form method="post">
+            <div class="mb-3">
+                <label for="nombre_area">Nombre del Área:</label>
+                <input type="text" class="form-control" id="nombre_area" name="nombre_area" required>
+            </div>
+            <div class="mb-3">
+                <label for="tipo_area">Tipo de área:</label>
+                <select name="tipo_area" id="tipo_area" class="form-select" required>
+                    <option value="cuadrantes">Cuadrantes</option>
+                    <option value="sectores">Sectores</option>
+                    <option value="z_trabajos">Zonas de trabajo</option>
+                    <option value="cercos">Cercos</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <button type="submit" class="btn btn-success w-100">Crear Área</button>
+            </div>
+            <div class="mb-3">
+                <label for="blanck"></label>
+                <button type="button" class="btn btn-info w-100" data-bs-toggle="modal" data-bs-target="#infoModal">
+                    ❓ Ver Instrucciones
+                </button>
+            </div>
+    
+            <input type="hidden" id="coordenadas_text" name="nuevas_coordenadas" />
+            <input type="hidden" id="coordenadas" name="coordenadas" />
+            <input type="hidden" id="id_area" name="id_area" value="{{ id_area }}" />
+        </form>
+    </div>
+    
+</div>
+{% endblock %}
+
+{% block maincontent %}
+    <div id="map" class="mapa" style="height: 800px; margin-top: 40px;"></div>
+{% endblock maincontent %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        initializeMap();
+    });
+</script>
+{% endblock scripts %}

@@ -1,0 +1,19 @@
+<script src="../../static/JS/scripts.js"></script>
+
+    <button class="btn btn-success toggler" onclick="toggleSidebar()">☰</button>
+        <div class="sidebar" id="sidebar">
+            <button type="button" class="btn-close close-btn" aria-label="Close" onclick="toggleSidebar()"></button>
+            <div class="sidebar-content">
+                <a href="https://maho.cl/web2/"><img src="../static/IMAGES/logo_hospicio.png" alt="logo_hospicio" class="logo mb-4"></a>
+                <a href="{{ url_for('index') }}" class="btn btn-success d-block mb-2">Volver al inicio</a>
+                <a href="{{ url_for('menu_coordenadas') }}" class="btn btn-success d-block mb-2">Menú Coordenadas</a>
+                <a href="{{ url_for('menu_vehiculo') }}" class="btn btn-success d-block mb-2">Menú Vehiculo</a>
+                <a href="{{ url_for('menu_personal') }}" class="btn btn-success d-block mb-2">Menú Personal</a>
+                <a href="{{ url_for('menu_equipo') }}" class="btn btn-success d-block mb-2">Menú Equipo</a>
+                <a href="{{ url_for('logout') }}" class="btn btn-danger d-block">Cerrar sesión</a>
+            </div>
+        </div>
+
+    <div class="main-content" id="mainContent">
+        
+    </div>

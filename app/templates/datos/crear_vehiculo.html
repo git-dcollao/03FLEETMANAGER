@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="containerForm">
+                <h1 class="mb-4">Agregar Vehículo</h1>
+                <form method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="flota">Flota:</label>
+                        <select class="form-control" id="flota" name="flota" required>
+                            {% for flota in flota %}
+                                <option value="{{ flota.id_flota }}">{{ flota.nombre_flota }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="patente">Patente:</label>
+                                <input type="text" class="form-control" id="patente" name="patente" required>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="gps">GPS:</label>
+                                <input type="text" class="form-control" id="gps" name="gps" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="estado">Estado:</label>
+                                <select class="form-control" id="estado" name="estado" required>
+                                    <option value="Activo">Activo</option>
+                                    <option value="En Reparacion">En Reparacion</option>
+                                    <option value="Inutilizable">Inutilizable</option>
+                                    <option value="Dado de baja">Dado de baja</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="restriccion">Restriccion:</label>
+                                <select class="form-control" id="restriccion" name="restriccion" required>
+                                    <option value="1">Sin restricción</option>
+                                    <option value="2">Con restricción</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="tipo_vehiculo">Tipo Vehiculo:</label>
+                                <select class="form-control" id="tipo_vehiculo" name="tipo_vehiculo" required>
+                                    {% for tipo_vehiculo in tipo_vehiculo %}
+                                        <option value="{{ tipo_vehiculo.id_tv }}">{{ tipo_vehiculo.nombre_tv }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="mb-3">
+                                <label for="detalles_tv">Detalles TV:</label>
+                                <select class="form-control" id="detalles_tv" name="detalles_tv" required>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="foto">Foto:</label>
+                        <input type="file" class="form-control" id="foto" name="foto">
+                    </div>
+                    <button type="submit" class="btn btn-success">Guardar Vehículo</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock maincontent %}
+{% block scripts %}
+<script>
+    // Precargar las opciones del tipo de vehículo y detalles de tipo de vehículo
+    window.addEventListener('DOMContentLoaded', (event) => {
+        cargarDetallesPorTipoVehiculo();
+    });
+
+    // Función para cargar los detalles de tipo de vehículo según el tipo seleccionado
+    document.getElementById('tipo_vehiculo').addEventListener('change', function() {
+        cargarDetallesPorTipoVehiculo();
+    });
+
+    // Función para cargar los detalles de tipo de vehículo
+    function cargarDetallesPorTipoVehiculo() {
+        var tipoVehiculoId = document.getElementById('tipo_vehiculo').value;
+        fetch('/detalles_tv/' + tipoVehiculoId)
+            .then(response => response.json())
+            .then(data => {
+                var detallesTvSelect = document.getElementById('detalles_tv');
+                detallesTvSelect.innerHTML = ''; // Limpiar opciones anteriores
+
+                // Crear una opción por cada detalle de tipo de vehículo
+                data.forEach(detalle => {
+                    var option = document.createElement('option');
+                    option.value = detalle.id_dtv;
+                    option.textContent = detalle.nombre_dtv;
+                    detallesTvSelect.appendChild(option);
+                });
+            });
+    }
+</script>
+{% endblock scripts %}

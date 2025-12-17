@@ -1,0 +1,448 @@
+{% extends 'base.html' %}
+{% block headcontent %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/json2/20160511/json2.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <script src="../static/JS/scripts.js"></script>
+{% endblock %}
+
+{% block body %}
+<button class="btn btn-success toggler2" onclick="toggleSidebarOpciones()">⚙️</button>
+    <div class="sidebar2" id="sidebar2">
+        <button type="button" class="btn-close close-btn2" aria-label="Close" onclick="toggleSidebarOpciones()"></button>
+        <div class="sidebar-content">
+            <label for="fecha" class="form-label">Selecciona una fecha:</label>
+            <select id="fecha" class="form-select">
+                {% for fecha in fechas_disponibles %}
+                    <option value="{{ fecha }}">{{ fecha }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="horaInicio" class="form-label">Hora de inicio:</label>
+            <input type="time" id="horaInicio" class="form-control" step="1" value="00:00:00">
+
+            <label for="horaFin" class="form-label">Hora de fin:</label>
+            <input type="time" id="horaFin" class="form-control" step="1" value="23:59:59">
+            <br>
+
+            <a id="graficarTrayecto" class="btn btn-success d-block mb-2">Graficar Trayecto</a>
+            <a id="animarTrayecto" class="btn btn-success d-block mb-2">Animar Trayecto</a>
+            <a id="mostrarMapaCalor" class="btn btn-success d-block mb-2">Mostrar Mapa de Calor</a>
+        </div>
+    </div>
+{% endblock %}
+
+{% block maincontent %}
+    <div class="container mt-8">
+        <div class="row justify-content-center">
+            <div class="col-md-10"> <!-- Aumenta el ancho del col-md a 10 para hacerlo más ancho -->
+                <h4 class="text-center mb-4">Trayecto del vehículo {{ vehiculo.patente }}</h4>
+                <!-- Agrega una clase al div del mapa para aplicar estilos CSS personalizados -->
+                <div id="map" class="map-container" style="height: 500px;"></div>
+            </div>
+        </div>   
+    </div>
+{% endblock %}
+{% block scripts %}
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <script>
+        const IP = "192.168.230.111"
+        const PORT = "8080"
+        const COLOR = "purple"
+        var map;
+        var previousPolyline;
+        var previousMarkers = [];
+        var coordenadas_vehiculo = {{ coordenadas_vehiculo | tojson }};
+        var initialCoords = [coordenadas_vehiculo[0].latitud, coordenadas_vehiculo[0].longitud];
+        var animationInterval;
+        var heatLayer;
+        
+        // Inicializar el mapa
+        function initMap() {
+            map = L.map('map',{
+                maxZoom: 18,
+                minZoom: 1
+            }).setView(initialCoords, 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            map.doubleClickZoom.disable();
+        }
+
+        // Función para limpiar el mapa
+        function clearMap() {
+            for (var i = 0; i < previousMarkers.length; i++) {
+                map.removeLayer(previousMarkers[i]);
+            }
+            if (previousPolyline) {
+                map.removeLayer(previousPolyline);
+            }
+
+            // Eliminar las rutas y los controles de ruta creados por Leaflet Routing Machine
+            map.eachLayer(function(layer) {
+                if (layer instanceof L.Routing.control) {
+                    map.removeControl(layer);
+                }
+            });
+        }
+
+        // Función para limpiar el intervalo de animación
+        function clearAnimationInterval() {
+            clearInterval(animationInterval);
+        }
+    
+        // Función para graficar las coordenadas de la fecha seleccionada
+        function plotCoordinatesByDateAndTime() {
+            var fechaSeleccionada = document.getElementById('fecha').value;
+            var horaInicio = document.getElementById('horaInicio').value;
+            var horaFin = document.getElementById('horaFin').value;
+
+            var coordenadasFecha = coordenadas_vehiculo.filter(function(coord) {
+                return coord.fecha === fechaSeleccionada && coord.hora >= horaInicio && coord.hora <= horaFin;
+            });
+
+            plotCoordinates(coordenadasFecha);
+        }
+    
+        // Función para graficar las coordenadas en el mapa
+        function plotCoordinates(coordenadas) {
+            // Limpiar marcadores y polilínea previos
+            clearPreviousMarkersAndPolyline();
+
+            // Crear puntos de la ruta
+            var routingPoints = [];
+            for (var i = 0; i < coordenadas.length; i++) {
+                var currentCoords = coordenadas[i];
+                routingPoints.push(L.latLng(currentCoords.latitud, currentCoords.longitud));
+            }
+
+            // Limpiar todos los marcadores existentes
+            map.eachLayer(function(layer) {
+                if (layer instanceof L.Marker) {
+                    map.removeLayer(layer);
+                }
+            });
+
+            // Limpiar todas las rutas existentes
+            map.eachLayer(function(layer) {
+                if (layer instanceof L.Routing.control) {
+                    map.removeControl(layer);
+                }
+            });
+
+            // Crear rutas entre cada punto y el siguiente
+            for (var i = 0; i < coordenadas.length - 1; i++) {
+                (function(index) {
+                    var currentCoords = coordenadas[index + 1];
+                    var startPoint = routingPoints[index];
+                    var endPoint = routingPoints[index + 1];
+
+                    // Crear la ruta entre los dos puntos con Routing Machine
+                    var routingControl = L.Routing.control({
+                        waypoints: [startPoint, endPoint],
+                        routeWhileDragging: false,
+                        show: false,
+                        addWaypoints: false,
+                        draggableWaypoints: false,
+                        serviceUrl: `http://${IP}:${PORT}/route/v1`,
+                        lineOptions: {
+                            styles: [{ color: COLOR }]
+                        },
+                        createMarker: function(i, wp, nWps) {
+                            return createCustomMarker(wp.latLng, COLOR);
+                        }
+                    }).addTo(map);
+
+                    routingControl.on('routesfound', function(e) {
+                        var routes = e.routes;
+                        var distanciaRuta = routes[0].summary.totalDistance;
+                        var distanciaCoordenada = currentCoords.distancia;
+
+                        // Comparar la distancia de la ruta con la distancia proporcionada en distanciaCoordenada
+                        if (distanciaRuta <= distanciaCoordenada + 20) {
+                            console.log(`Distancia entre el punto ${index + 1} y el punto ${index + 2}: ${distanciaRuta} metros`);
+                            console.log(`Distancia original de la coordenada: ${distanciaCoordenada} metros`);
+                        } else {
+                            console.log(`La distancia de la ruta (${distanciaRuta} metros) es mayor que la distancia de la coordenada (${distanciaCoordenada} metros). No se agrega la ruta.`);
+                            map.removeControl(routingControl);
+
+                            // Verificar si es el primer o último punto
+                            if (index === 0 || index === coordenadas.length - 2) {
+                                console.log(`Dibujando polyline con routing machine entre el punto ${index + 1} y el punto ${index + 2}`)
+                                // Crear un nuevo control de ruta con el punto de inicio actualizado
+                                var newStartPoint = routingPoints[index - 1]; // Usar el siguiente punto al incorrecto como nuevo punto de inicio
+                                var newEndPoint = routingPoints[index + 1];
+                                L.Routing.control({
+                                    waypoints: [newStartPoint, newEndPoint],
+                                    routeWhileDragging: false,
+                                    show: false,
+                                    addWaypoints: false,
+                                    draggableWaypoints: false,
+                                    serviceUrl: `http://${IP}:${PORT}/route/v1`,
+                                    lineOptions: {
+                                        styles: [{ color: COLOR }]
+                                    },
+                                    createMarker: function(i, wp, nWps) {
+                                        // Utilizar tu función createCustomMarker para crear los marcadores personalizados
+                                        return createCustomMarker(wp.latLng, COLOR);
+                                    }
+                                }).addTo(map);
+                            } else {
+                                console.log(`Dibujando polyline con routing machine entre el punto ${index + 1} y el punto ${index + 2}`)
+                                // Crear un nuevo control de ruta con el punto de inicio actualizado
+                                var newStartPoint = routingPoints[index - 1]; // Usar el siguiente punto al incorrecto como nuevo punto de inicio
+                                var newEndPoint = routingPoints[index + 2];
+                                L.Routing.control({
+                                    waypoints: [newStartPoint, newEndPoint],
+                                    routeWhileDragging: false,
+                                    show: false,
+                                    addWaypoints: false,
+                                    draggableWaypoints: false,
+                                    serviceUrl: `http://${IP}:${PORT}/route/v1`,
+                                    lineOptions: {
+                                        styles: [{ color: COLOR }]
+                                    },
+                                    createMarker: function(i, wp, nWps) {
+                                        // Utilizar tu función createCustomMarker para crear los marcadores personalizados
+                                        return createCustomMarker(wp.latLng, COLOR);
+                                    }
+                                }).addTo(map);
+                            }
+                        }
+                    });
+                })(i);
+            }
+
+            // Crear marcadores personalizados y agregar popups
+            for (var i = 0; i < coordenadas.length; i++) {
+                var currentCoords = coordenadas[i];
+                var customMarker = createCustomMarker([currentCoords.latitud, currentCoords.longitud], COLOR);
+                var markerColor = COLOR;
+
+                // Verificar si la coordenada o la anterior estuvieron por más de 40 minutos sin movimiento
+                if (i > 0) {
+                    var horaActual = new Date(currentCoords.fecha + 'T' + currentCoords.hora);
+                    var horaAnterior = new Date(coordenadas[i - 1].fecha + 'T' + coordenadas[i - 1].hora);
+                    var diferenciaMinutos = (horaActual - horaAnterior) / (1000 * 60);
+
+                    if (diferenciaMinutos > 40) {
+                        markerColor = 'red';
+                    }
+                }
+
+                var markerSize = [8, 8];
+                if (markerColor == 'red') {
+                    markerSize = [12, 12];
+                    console.log('cambiando tamaño');
+                }
+
+                customMarker.addTo(map);
+                customMarker.setZIndexOffset(999); // Establecer el z-index a 999
+                customMarker.bindPopup('Coordenada ' + (i + 1) + '<br>' + 'Fecha: ' + currentCoords.fecha + ' | ' + currentCoords.hora + '<br>' + 'Velocidad: ' + currentCoords.velocidad + ' Km/h' + ' | ' + 'Distancia: ' + currentCoords.distancia + ' m').openPopup();
+
+                // Ajustar el tamaño del icono dentro del setIcon
+                customMarker.setIcon(L.divIcon({
+                    className: 'custom-marker',
+                    iconSize: markerSize, // Tamaño del icono del marcador
+                    iconAnchor: [markerSize[0] / 2, markerSize[1] / 2], // Anclaje del icono del marcador
+                    html: '<div style="width: ' + markerSize[0] + 'px; height: ' + markerSize[1] + 'px; background-color: ' + markerColor + '; border-radius: 50%; cursor: default; border: 1px solid white;"></div>'
+                }));
+                previousMarkers.push(customMarker);
+            }
+        }
+        
+        function clearPreviousMarkersAndPolyline() {
+            // Eliminar los marcadores previos
+            for (var i = 0; i < previousMarkers.length; i++) {
+                map.removeLayer(previousMarkers[i]);
+            }
+            // Eliminar la polilínea previa
+            if (previousPolyline) {
+                map.removeLayer(previousPolyline);
+            }
+        }
+
+        // Evento al cargar la página
+        window.onload = function() {
+            initMap();
+            document.getElementById('graficarTrayecto').addEventListener('click', function() {
+                clearMap();
+                clearAnimationInterval();
+                plotCoordinatesByDateAndTime();
+                ocultarMapaDeCalor();
+            });
+            document.getElementById('animarTrayecto').addEventListener('click', function() {
+                clearMap();
+                clearAnimationInterval();
+                animateCoordinatesByDate();
+                ocultarMapaDeCalor();
+            });
+            document.getElementById('mostrarMapaCalor').addEventListener('click', function() {
+                clearMap();
+                clearAnimationInterval();
+                var fechaSeleccionada = document.getElementById('fecha').value;
+                var horaInicio = document.getElementById('horaInicio').value;
+                var horaFin = document.getElementById('horaFin').value;
+                var coordenadasFiltradas = filtrarCoordenadasPorFechaYHora(fechaSeleccionada, horaInicio, horaFin);
+                plotCoordinatesByDateAndTime();
+                mostrarMapaCalor(coordenadasFiltradas);
+            });
+        };
+
+        // Función para filtrar las coordenadas por fecha y hora
+        function filtrarCoordenadasPorFechaYHora(fecha, horaInicio, horaFin) {
+            return coordenadas_vehiculo.filter(function(coord) {
+                return coord.fecha === fecha && coord.hora >= horaInicio && coord.hora <= horaFin;
+            });
+        }
+
+        // Función para ocultar el mapa de calor
+        function ocultarMapaDeCalor() {
+            if (heatLayer) {
+                map.removeLayer(heatLayer); // Eliminar el mapa de calor actual si existe
+                heatLayer = null;
+            }
+        }
+
+        // Función para mostrar el mapa de calor
+        function mostrarMapaCalor(coordenadasFiltradas) {
+            ocultarMapaDeCalor(); // Ocultar cualquier mapa de calor existente
+            var heatArray = coordenadasFiltradas.map(function(coord) {
+                return [coord.latitud, coord.longitud, 1];
+            });
+
+            var heatOptions = {
+                radius: 25, // Tamaño del radio del punto de calor
+                blur: 15,   // Suavidad del mapa de calor
+                maxZoom: 17 // Nivel máximo de zoom en el que se mostrará el mapa de calor
+            };
+
+            // Crear el mapa de calor y añadirlo al mapa
+            heatLayer = L.heatLayer(heatArray, heatOptions).addTo(map);
+
+            // Centrar el mapa en las coordenadas del primer punto
+            map.setView([coordenadasFiltradas[0].latitud, coordenadasFiltradas[0].longitud], 13);
+        }
+
+        function plotCoordinatesHeatMap(coordenadas) {
+            var heatArray = coordenadas.map(function(coord) {
+                return [coord.latitud, coord.longitud, 1];
+            });
+
+            var heatOptions = {
+                radius: 25,
+                blur: 15,
+                maxZoom: 17
+            };
+
+            var heatLayer = L.heatLayer(heatArray, heatOptions).addTo(map);
+
+            map.setView([coordenadas[0].latitud, coordenadas[0].longitud], 13);
+        }
+    
+        // Función para animar las coordenadas según la fecha y hora seleccionadas
+        function animateCoordinatesByDate() {
+            var fechaSeleccionada = document.getElementById('fecha').value;
+            var horaInicio = document.getElementById('horaInicio').value;
+            var horaFin = document.getElementById('horaFin').value;
+            
+            // Filtrar las coordenadas por fecha y hora
+            var coordenadasFechaHora = coordenadas_vehiculo.filter(function(coord) {
+                return coord.fecha === fechaSeleccionada && coord.hora >= horaInicio && coord.hora <= horaFin;
+            });
+
+            // Calcular la velocidad de animación según el número de coordenadas
+            var velocidad = calcularVelocidad(coordenadasFechaHora.length);
+
+            // Animar las coordenadas con la velocidad calculada
+            animateCoordinates(coordenadasFechaHora, velocidad);
+        }
+
+        // Función para animar las coordenadas
+        function animateCoordinates(coordenadas) {
+            var cantidadRegistros = coordenadas.length;
+            var index = 0;
+            var polylinePoints = [];
+            var velocidad = calcularVelocidad(cantidadRegistros);
+            var pausa = false;
+            animationInterval = setInterval(function() {
+                if (index < cantidadRegistros) {
+                    if (!pausa) {
+                        var currentCoords = coordenadas[index];
+                        var markerColor = COLOR;
+
+                        // Verificar si la coordenada o la anterior estuvieron por más de 40 minutos sin movimiento
+                        if (index > 0) {
+                            var horaActual = new Date(currentCoords.fecha + 'T' + currentCoords.hora);
+                            var horaAnterior = new Date(coordenadas[index - 1].fecha + 'T' + coordenadas[index - 1].hora);
+                            var diferenciaMinutos = (horaActual - horaAnterior) / (1000 * 60);
+
+                            if (diferenciaMinutos > 40) {
+                                markerColor = 'red';
+                                pausa = true;
+                                setTimeout(function() {
+                                    pausa = false;
+                                }, 3000);
+                            }
+                        }
+
+                        var customMarker = createCustomMarker([currentCoords.latitud, currentCoords.longitud], markerColor);
+                        customMarker.addTo(map);
+                        customMarker.bindPopup('Coordenada ' + (index + 1) + '<br>' + 'Fecha: ' + currentCoords.fecha + ' | ' + currentCoords.hora + '<br>' + 'Velocidad: ' + currentCoords.velocidad + ' Km/h' + ' | ' + 'Distancia: ' + currentCoords.distancia + ' m').openPopup();
+                        previousMarkers.push(customMarker);
+                        polylinePoints.push([currentCoords.latitud, currentCoords.longitud]);
+                        if (previousPolyline) {
+                            map.removeLayer(previousPolyline);
+                        }
+                        previousPolyline = L.polyline(polylinePoints, { color: COLOR }).addTo(map);
+                        index++;
+                    }
+                } else {
+                    clearInterval(animationInterval);
+                }
+            }, velocidad);
+        }
+
+        // Función para calcular la velocidad de la animación según el número de coordenadas
+        function calcularVelocidad(cantidadRegistros) {
+            if (cantidadRegistros <= 60) {
+                return 1000;
+            } 
+            else if (cantidadRegistros >= 61 && cantidadRegistros <= 100) {
+                return 500;
+            } 
+            else if (cantidadRegistros >= 101 && cantidadRegistros <= 300) {
+                return 175;
+            }
+            else if (cantidadRegistros >= 301 && cantidadRegistros <= 700) {
+                return 100;
+            }
+            else if (cantidadRegistros >= 701 && cantidadRegistros <= 1400) {
+                return 80;
+            }
+            else if (cantidadRegistros >= 1401) {
+                return 75;
+            } else {
+                return 50;
+            }
+        }
+    
+        // Función para crear un marcador personalizado
+        function createCustomMarker(latlng, color) {
+            var iconSize = [8, 8];
+            if (color === 'red') {
+                iconSize = [16, 16];
+            }
+            return L.marker(latlng, {
+                icon: L.divIcon({
+                    className: 'custom-marker',
+                    iconSize: iconSize,
+                    iconAnchor: [iconSize[0] / 2, iconSize[1] / 2],
+                    html: '<div style="width: ' + iconSize[0] + 'px; height: ' + iconSize[1] + 'px; background-color: ' + color + '; border: 1px solid white; border-radius: 50%; cursor: default;"></div>'
+                })
+            });
+        }
+    </script>
+{% endblock %}

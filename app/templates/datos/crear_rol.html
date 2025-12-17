@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="containerForm">
+                <h1 class="mb-4 text-center">Crear Rol</h1>
+                <form method="post"">
+                    <div class="mb-3">
+                        <label for="nombre_rol">Nombre del Rol:</label>
+                        <input type="text" class="form-control" id="nombre_rol" name="nombre_rol" required>
+                    </div>
+                    <button type="submit" class="btn btn-success">Crear Rol</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock maincontent %}

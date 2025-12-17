@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="containerForm">
+                <h1 class="text-center mb-4">Agregar Subtipo Vehículo</h1>
+                <form id="formulario-detalle" method="POST">
+                    <div class="mb-3">
+                        <label for="tipo_vehiculo" class="form-label">Tipo de Vehículo:</label>
+                        <select name="tipo_vehiculo" id="tipo_vehiculo" class="form-select">
+                            {% for tipo in tipo_vehiculo %}
+                                <option value="{{ tipo.id_tv }}">{{ tipo.nombre_tv }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="nombre_dtv" class="form-label">Nombre del subtipo:</label>
+                        <input type="text" name="nombre_dtv" id="nombre_dtv" class="form-control" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success btn-block">Agregar Detalle</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock maincontent %}

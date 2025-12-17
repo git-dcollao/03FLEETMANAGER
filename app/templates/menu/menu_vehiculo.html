@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="text-center">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h1 class="display-6 mb-6">Seleccione donde redirigirse</h1>
+        </div>
+    </div>
+    <div class="option-container">
+        <div class="row justify-content-start">
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/vehiculo/vehiculo.png" alt="Ingresar Vehiculo">
+                <!-- <h5 class="mt-3">Ingresar Vehiculo</h5> -->
+                <a href="{{ url_for('creation.crear_vehiculo') }}" class="btn btn-success">Ingresar Vehiculo</a>
+            </div>
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/vehiculo/archivo.png" alt="Archivo">
+                <!-- <h5 class="mt-3">Carga Masiva de Vehiculos</h5> -->
+                <a href="{{ url_for('main.carga_masiva_vehiculo') }}" class="btn btn-success">Carga Masiva de Vehiculos</a>
+            </div>
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/vehiculo/archivo.png" alt="Archivo">
+                <!-- <h5 class="mt-3">Carga Coordenadas</h5> -->
+                <a href="{{ url_for('main.carga_masiva_coordenadas_vehiculo') }}" class="btn btn-success">Carga Coordenadas</a>
+            </div>
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/vehiculo/vehiculo.png" alt="Seleccionar Vehiculo">
+                <!-- <h5 class="mt-3">Seleccionar Vehiculo</h5> -->
+                <a href="{{ url_for('main.seleccionar_vehiculo') }}" class="btn btn-success">Seleccionar Vehiculo</a>
+            </div>
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/vehiculo/lista.png" alt="Lista de Vehiculos">
+                <!-- <h5 class="mt-3">Lista de Vehiculos</h5> -->
+                <a href="{{ url_for('crud.lista_vehiculo') }}" class="btn btn-success">Lista de Vehiculos</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock maincontent %}

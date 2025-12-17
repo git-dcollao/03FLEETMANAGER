@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% block headcontent %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/json2/20160511/json2.js"></script>
+{% endblock %}
+{% block maincontent %}
+<div class="container mt-5">
+    <h1 class="mb-4">Informe del vehiculo {{ vehiculo.patente}}</h1>
+    <div class="d-flex justify-content-between align-items-center" style="margin-bottom: 10px;">
+        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#informeModal">Ver Informe Completo</button>
+
+        <form method="POST">
+            <div class="row align-items-end">
+                <div class="col-md-8">
+                    <select id="fecha" name="fecha" class="form-select">
+                        <option value="mostrarTodo">Mostrar Todo</option>
+                        {% for fecha in fechas_disponibles %}
+                            {% if fecha == fecha_seleccionada %}
+                                <option value="{{ fecha }}" selected>{{ fecha }}</option>
+                            {% else %}
+                                <option value="{{ fecha }}">{{ fecha }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-success">Filtrar</button>
+                </div>
+            </div>
+        </form>
+        
+        <form action="/descargar_informe_excel" method="post">
+            <input type="hidden" name="id_vehiculo" value="{{ vehiculo.id_vehiculo }}">
+            <button class="btn btn-success" type="submit">Descargar Informe en Excel</button>
+        </form>
+    </div>
+    
+    <table class="table" style="border: 1px;">
+        <thead class="encabezado">
+            <tr>
+                <th style="padding-right: 20px;">Patente</th>
+                <th>Cuadrante</th>
+                <th>Sector</th>
+                <th>Zonas Trabajo</th>
+                <th>Cerco</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+                <th>Hora</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for data in informe_data | reverse %}
+            <tr>
+                <td>{{ vehiculo.patente }}</td>
+                <td>
+                    {% if 'cuadrantes' in data.tipos_area %}
+                        {{ data.nombres_area[data.tipos_area.index('cuadrantes')] }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
+                <td>
+                    {% if 'sectores' in data.tipos_area %}
+                        {{ data.nombres_area[data.tipos_area.index('sectores')] }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
+                <td>
+                    {% if 'z_trabajos' in data.tipos_area %}
+                        {{ data.nombres_area[data.tipos_area.index('z_trabajos')] }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                    
+                </td>
+                <td>
+                    {% if 'cercos' in data.tipos_area %}
+                        {{ data.nombres_area[data.tipos_area.index('cercos')] }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
+                <td>{{ data.estado }}</td>
+                <td>{{ data.fecha }}</td>
+                <td>{{ data.hora }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="modal fade" id="informeModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Informe Completo del Vehículo {{ vehiculo.patente }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <table class="table">
+                        <thead class="encabezado">
+                            <tr>
+                                <th>Patente</th>
+                                <th>Cuadrante</th>
+                                <th>Sector</th>
+                                <th>Zonas Trabajo</th>
+                                <th>Cerco</th>
+                                <th>Latitud</th>
+                                <th>Longitud</th>
+                                <th>Distancia (m)</th>
+                                <th>Velocidad (km/h)</th>
+                                <th>Tiempo (s)</th>
+                                <th>Estado</th>
+                                <th>Fecha</th>
+                                <th>Hora</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for data in informe_data | reverse %}
+                                <tr>
+                                    <td>{{ vehiculo.patente }}</td>
+                                    <td>
+                                        {% if 'cuadrantes' in data.tipos_area %}
+                                            {{ data.nombres_area[data.tipos_area.index('cuadrantes')] }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if 'sectores' in data.tipos_area %}
+                                            {{ data.nombres_area[data.tipos_area.index('sectores')] }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if 'z_trabajos' in data.tipos_area %}
+                                            {{ data.nombres_area[data.tipos_area.index('z_trabajos')] }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if 'cercos' in data.tipos_area %}
+                                            {{ data.nombres_area[data.tipos_area.index('cercos')] }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ data.latitud }}</td>
+                                    <td>{{ data.longitud }}</td>
+                                    <td>{{ data.distancia }} m</td>
+                                    <td>{{ data.velocidad }} km/h</td>
+                                    <td>{{ data.tiempo }} s</td>
+                                    <td>{{ data.estado }}</td>
+                                    <td>{{ data.fecha }}</td>
+                                    <td>{{ data.hora }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

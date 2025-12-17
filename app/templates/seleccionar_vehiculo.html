@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow" style="background-color: rgba(240, 248, 255, 0.568); border-radius: 15px;">
+                <div class="card-body">
+                    <h1 class="mb-4 text-center">Seleccionar Vehículo</h1>
+                    <form method="post" id="formularioSeleccion">
+                        <div class="form-group d-flex flex-column align-items-center">
+                            <label for="id_vehiculo" class="mb-0">Seleccione un vehículo:</label>
+                            <select name="id_vehiculo" id="id_vehiculo" class="form-select w-auto">
+                                {% if vehiculos %}
+                                    {% for vehiculo in vehiculos %}
+                                        <option value="{{ vehiculo.id_vehiculo }}">{{ vehiculo.patente }}</option>
+                                    {% endfor %}
+                                {% else %}
+                                    <option value="#">No hay vehiculos</option>
+                                {% endif %}
+                            </select>
+                            {% if vehiculos %}
+                                <label for="seleccion" class="mb-0 mt-3">Seleccione una opción:</label>
+                                <select name="seleccion" id="seleccion" class="form-select w-auto">
+                                    <option value="Informe">Ver Informe</option>
+                                    <option value="Trayecto">Ver Trayecto</option>
+                                </select>
+                                <button type="submit" class="btn btn-success mt-3">Seleccionar</button>
+                            {% else %}
+                                <p class="mt"><strong>Vuelva más tarde</strong></p>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

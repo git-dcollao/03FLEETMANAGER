@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ver Trayecto</title>
+    <link rel="stylesheet" href="../static/CSS/estilo.css">
+    <link rel="icon" href="../static/IMAGES/logo_hospicio.png"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/json2/20160511/json2.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <script src="../static/JS/scripts.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+</head>
+<body>
+    <header class="d-flex justify-content-between align-items-center" style="padding-top: 10px; margin-left: 10px;">
+        <a href="https://maho.cl/web2/"><img src="../../static/IMAGES/logo_hospicio.png" alt="logo_hospicio" class="logo"></a>
+        <div class="d-flex" style="padding-right: 5px;">
+            <a href="{{ url_for('index') }}" class="btn btn-success mx-2">Volver al inicio</a>
+            <a href="{{ url_for('menu_coordenadas') }}" class="btn btn-success mx-2">Menú Coordenadas</a>
+            <a href="{{ url_for('menu_vehiculo') }}" class="btn btn-success mx-2">Menú Vehiculo</a>
+            <a href="{{ url_for('menu_personal') }}" class="btn btn-success mx-2">Menú Personal</a>
+            <a href="{{ url_for('menu_equipo') }}" class="btn btn-success mx-2">Menú Equipo</a>
+            <a href="{{ url_for('logout') }}" class="btn btn-danger mx-2">Cerrar sesión</a>
+        </div>
+    </header>
+    <div class="container">
+        <div class="row justify-content-center align-items-center">
+            <div class="col-md-8">
+                <h1 class="text-center mb-4">Trayecto del vehículo {{ vehiculo.patente }}</h1>
+                <div class="row">
+                    <div class="col-md-4">
+                        <label for="fecha" class="form-label">Selecciona una fecha:</label>
+                        <select id="fecha" class="form-select">
+                            {% for fecha in fechas_disponibles %}
+                                <option value="{{ fecha }}">{{ fecha }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="horaInicio" class="form-label">Hora de inicio:</label>
+                        <input type="time" id="horaInicio" class="form-control" step="1" value="00:00:00">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="horaFin" class="form-label">Hora de fin:</label>
+                        <input type="time" id="horaFin" class="form-control" step="1" value="23:59:59">
+                    </div>
+                </div>
+                <div class="text-center my-3">
+                    <button id="graficarTrayecto" class="btn btn-success me-3">Graficar Trayecto</button>
+                    <button id="animarTrayecto" class="btn btn-success">Animar Trayecto</button>
+                </div>
+                <div id="barraAnimada"></div>
+                <div id="map" style="height: 500px;"></div>
+            </div>
+        </div>   
+    </div>
+    
+    <footer>
+        <h4>Municipalidad de Alto Hospicio</h4>
+        <p>Avenida Ramón Pérez Opazo # 3125 | Oficina de Partes: +57 2583000 | Emergencias: +57 2583050</p>
+    </footer>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        var map;
+        var previousPolyline;
+        var previousMarkers = [];
+        var coordenadas_vehiculo = {{ coordenadas_vehiculo | tojson }};
+        var initialCoords = [coordenadas_vehiculo[0].latitud, coordenadas_vehiculo[0].longitud];
+        var animationInterval;
+        
+        // Inicializar el mapa
+        function initMap() {
+            map = L.map('map').setView(initialCoords, 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+        }
+
+        // Función para limpiar el mapa
+        function clearMap() {
+            for (var i = 0; i < previousMarkers.length; i++) {
+                map.removeLayer(previousMarkers[i]);
+            }
+            if (previousPolyline) {
+                map.removeLayer(previousPolyline);
+            }
+        }
+
+        // Función para limpiar el intervalo de animación
+        function clearAnimationInterval() {
+            clearInterval(animationInterval);
+        }
+    
+        // Función para graficar las coordenadas de la fecha seleccionada
+        function plotCoordinatesByDateAndTime() {
+            var fechaSeleccionada = document.getElementById('fecha').value;
+            var horaInicio = document.getElementById('horaInicio').value;
+            var horaFin = document.getElementById('horaFin').value;
+
+            var coordenadasFecha = coordenadas_vehiculo.filter(function(coord) {
+                return coord.fecha === fechaSeleccionada && coord.hora >= horaInicio && coord.hora <= horaFin;
+            });
+
+            plotCoordinates(coordenadasFecha);
+        }
+    
+        // Función para graficar las coordenadas en el mapa
+        function plotCoordinates(coordenadas) {
+            for (var i = 0; i < previousMarkers.length; i++) {
+                map.removeLayer(previousMarkers[i]);
+            }
+
+            if (previousPolyline) {
+                map.removeLayer(previousPolyline);
+            }
+
+            var polylinePoints = [];
+            for (var i = 0; i < coordenadas.length; i++) {
+                var currentCoords = coordenadas[i];
+                var customMarker = createCustomMarker([currentCoords.latitud, currentCoords.longitud], 'purple');
+                customMarker.addTo(map);
+                customMarker.bindPopup('Coordenada ' + (i + 1) + '<br>' + 'Fecha: ' + currentCoords.fecha + '<br>' + 'Hora: ' + currentCoords.hora).openPopup();
+                previousMarkers.push(customMarker); // Agregar marcador a la lista de marcadores anteriores
+                polylinePoints.push([currentCoords.latitud, currentCoords.longitud]);
+            }
+            previousPolyline = L.polyline(polylinePoints, { color: 'purple' }).addTo(map);
+        }
+    
+        // Evento al cargar la página
+        window.onload = function() {
+            initMap();
+            document.getElementById('graficarTrayecto').addEventListener('click', function() {
+                clearMap();
+                clearAnimationInterval();
+                plotCoordinatesByDateAndTime();
+            });
+            document.getElementById('animarTrayecto').addEventListener('click', function() {
+                clearMap();
+                clearAnimationInterval();
+                animateCoordinatesByDate();
+            });
+        };
+    
+        // Función para animar las coordenadas según la fecha y hora seleccionadas
+        function animateCoordinatesByDate() {
+            var fechaSeleccionada = document.getElementById('fecha').value;
+            var horaInicio = document.getElementById('horaInicio').value;
+            var horaFin = document.getElementById('horaFin').value;
+            
+            // Filtrar las coordenadas por fecha y hora
+            var coordenadasFechaHora = coordenadas_vehiculo.filter(function(coord) {
+                return coord.fecha === fechaSeleccionada && coord.hora >= horaInicio && coord.hora <= horaFin;
+            });
+
+            // Calcular la velocidad de animación según el número de coordenadas
+            var velocidad = calcularVelocidad(coordenadasFechaHora.length);
+
+            // Animar las coordenadas con la velocidad calculada
+            animateCoordinates(coordenadasFechaHora, velocidad);
+        }
+
+        // Función para animar las coordenadas y la barra
+        function animateCoordinates(coordenadas, velocidad) {
+            var cantidadRegistros = coordenadas.length;
+            var index = 0;
+            var polylinePoints = [];
+            var tiempoInicio = moment(obtenerTiempoInicio(coordenadas));
+            var tiempoFin = moment(obtenerTiempoFin(coordenadas));
+            var duracionTotal = cantidadRegistros / (1000 / velocidad);
+            var diferencia = (moment.duration(tiempoFin.diff(tiempoInicio)).asSeconds());
+            var tIncremento = (moment.duration(tiempoFin.diff(tiempoInicio)).asSeconds()) / duracionTotal;
+            alert(tiempoFin)
+            alert(tiempoInicio)
+            alert(duracionTotal)
+            alert(diferencia)
+            alert(tIncremento)
+
+            // Animar la barra
+            var barra = document.getElementById('barraAnimada');
+            barra.style.animationDuration = duracionTotal + 's';
+
+            animationInterval = setInterval(function() {
+                if (index < cantidadRegistros) {
+                    var currentCoords = coordenadas[index];
+                    var customMarker = createCustomMarker([currentCoords.latitud, currentCoords.longitud], 'purple');
+                    customMarker.addTo(map);
+                    customMarker.bindPopup('Coordenada ' + (index + 1) + '<br>' + 'Fecha: ' + currentCoords.fecha + '<br>' + 'Hora: ' + currentCoords.hora).openPopup();
+                    previousMarkers.push(customMarker);
+                    polylinePoints.push([currentCoords.latitud, currentCoords.longitud]);
+                    if (previousPolyline) {
+                        map.removeLayer(previousPolyline);
+                    }
+                    previousPolyline = L.polyline(polylinePoints, { color: 'purple' }).addTo(map);
+                    index++;
+                } else {
+                    clearInterval(animationInterval);
+                }
+            }, velocidad);
+        }
+
+        // Función para obtener el tiempo de inicio de las coordenadas
+        function obtenerTiempoInicio(coordenadas) {
+            return new Date(coordenadas[0].fecha + ' ' + coordenadas[0].hora).getTime();
+        }
+
+        // Función para obtener el tiempo de fin de las coordenadas
+        function obtenerTiempoFin(coordenadas) {
+            return new Date(coordenadas[coordenadas.length - 1].fecha + ' ' + coordenadas[coordenadas.length - 1].hora).getTime();
+        }
+
+        // Función para calcular la velocidad de la animación según el número de coordenadas
+        function calcularVelocidad(cantidadRegistros) {
+            if (cantidadRegistros <= 100) {
+                return 200;
+            } 
+            else if (cantidadRegistros >= 101 && cantidadRegistros <= 300) {
+                return 175;
+            }
+            else if (cantidadRegistros >= 301 && cantidadRegistros <= 700) {
+                return 100;
+            }
+            else if (cantidadRegistros >= 701 && cantidadRegistros <= 1400) {
+                return 80;
+            }
+            else if (cantidadRegistros >= 1401) {
+                return 65;
+            } else {
+                return 50;
+            }
+        }
+    
+        // Función para crear un marcador personalizado
+        function createCustomMarker(latlng, color) {
+            return L.marker(latlng, {
+                icon: L.divIcon({
+                    className: 'custom-marker',
+                    iconSize: [12, 12],
+                    iconAnchor: [6, 6],
+                    html: '<div style="width: 8px; height: 8px; background-color: ' + color + '; border: 2px solid white; border-radius: 50%; cursor: default;"></div>'
+                })
+            });
+        }
+    </script>
+</body>
+</html>

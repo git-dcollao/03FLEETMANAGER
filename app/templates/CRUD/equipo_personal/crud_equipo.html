@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="text-center">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h1 class="display-6 mb-6">Opciones para el Equipo</h1>
+        </div>
+    </div>
+    <div class="option-container">
+        <div class="row justify-content-center">
+            <div class="col-md-3 mb-4">
+                <img src="../../../static/IMAGES/equipo_personal/editar.png" alt="editar">
+                <!-- <h5 class="card-title"></h5> -->
+                <a href="{{ url_for('crud.editar_equipo', id_equipo=equipo.id_equipo) }}" class="btn btn-success">Editar</a>
+            </div>
+            <div class="col-md-3 mb-4">
+                <img src="../../../static/IMAGES/equipo_personal/eliminar.png" alt="eliminar">
+                <!-- <h5 class="card-title"></h5> -->
+                <a href="{{ url_for('crud.eliminar_equipo', id_equipo=equipo.id_equipo) }}" class="btn btn-danger">Eliminar</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock maincontent %}

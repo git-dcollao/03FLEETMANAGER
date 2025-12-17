@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="text-center">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h1 class="display-6 mb-6">Seleccione a donde redirigirse</h1>
+        </div>
+    </div>
+    <div class="option-container">
+        <div class="row justify-content-center">
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/coordenadas/gps.png" alt="ingresar">
+                <!-- <h5 class="card-title">Ingresar Coordenadas</h5> -->
+                <a href="{{ url_for('creation.ingresar_area_trabajo_route') }}" class="btn btn-success">Ingresar Coordenadas</a>
+            </div>
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/coordenadas/mapa.png" alt="editar">
+                <!-- <h5 class="card-title">Ingresar Coordenadas</h5> -->
+                <a href="{{ url_for('crud.lista_areas') }}" class="btn btn-success">Lista Coordenadas</a>
+            </div>
+            <div class="col-md-3 mb-4">
+                <img src="../../static/IMAGES/coordenadas/mapa.png" alt="editar">
+                <!-- <h5 class="card-title">Ingresar Todas las Coordenadas</h5> -->
+                <a href="{{ url_for('creation.ingresar_area_trabajo_route_all') }}" class="btn btn-success">Lista Coordenadas All</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock maincontent %}

@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block maincontent %}
+<div class="container mt-5">
+    <h2>Lista de Roles</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rol in rol_usuario %}
+                <tr>
+                    <td>{{ rol.nombre_rol_usuario }}</td>
+                    <td><a href="#" class="btn btn-success">Editar rol</a></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock maincontent %}

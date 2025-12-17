@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block headcontent %}
+{% endblock %}
+
+{% block maincontent %}
+<div class="text-center">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h1 class="display-6 mb-6">¡Bienvenido, {{ persona.nombre_personal }} {{ persona.apellido_paterno }} {{ persona.apellido_materno }}!</h1>
+            <p class="lead mb-5">Por favor, seleccione una opción para continuar</p>
+        </div>
+    </div>
+    <div class="option-container">
+        <div class="row justify-content-start">
+            <div class="col-md-3 mb-4">
+                <img src="../static/IMAGES/coordenadas/gps.png" class="img-fluid" alt="coordenadas">
+                <!-- <h5 class="mt-3">Menú Coordenadas</h5> -->
+                <a href="{{ url_for('main.menu_coordenadas') }}" class="btn btn-success">Menú Coordenadas</a>
+            </div>
+            <div class="col-md-3 mb-4">
+                <img src="../static/IMAGES/vehiculo/vehiculo.png" class="img-fluid" alt="vehiculo">
+                <!-- <h5 class="mt-3">Menú Vehículo</h5> -->
+                <a href="{{ url_for('main.menu_vehiculo') }}" class="btn btn-success">Menú Vehículo</a>
+            </div>
+            <div class="col-md-3 mb-4">
+                <img src="../static/IMAGES/equipo_personal/equipo.png" class="img-fluid" alt="equipo_personal">
+                <!-- <h5 class="mt-3">Menú Equipo Personal</h5> -->
+                <a href="{{ url_for('main.menu_equipo') }}" class="btn btn-success">Menú Equipo Personal</a>
+            </div>
+            <div class="col-md-3 mb-4">
+                <img src="../static/IMAGES/personal/usuario.png" class="img-fluid" alt="personal">
+                <!-- <h5 class="mt-3">Menú Personal</h5> -->
+                <a href="{{ url_for('main.menu_personal') }}" class="btn btn-success">Menú Personal</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
