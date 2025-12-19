@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block maincontent %}
+<div class="container mt-4">
+    <h3>Editar Rol</h3>
+
+    {% if rol %}
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('crud.editar_rol', id_rol=rol.id_rol) }}">
+                    <div class="mb-3">
+                        <label for="nombre_rol" class="form-label">Nombre Rol *</label>
+                        <input type="text" class="form-control" id="nombre_rol" name="nombre_rol" value="{{ rol.nombre_rol }}" required maxlength="30">
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('creation.crear_rol') }}" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-danger">Rol no encontrado</div>
+        <a href="{{ url_for('creation.crear_rol') }}" class="btn btn-secondary">Volver a la lista</a>
+    {% endif %}
+</div>
+{% endblock maincontent %}

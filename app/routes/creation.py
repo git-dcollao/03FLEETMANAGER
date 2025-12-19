@@ -12,9 +12,11 @@ def crear_cargo():
     if 'username' in session:
         username = session['username']
         usuario = Usuario.query.filter_by(username=username).first()
-        departamento_usuario = usuario.personal.cargo.dpto_empresa.id_dpto_empresa
+        empresa_usuario = usuario.personal.cargo.dpto_empresa.empresa.id_empresa
+        
         if request.method == 'POST':
             nombre_cargo = request.form['nombre_cargo']
+            departamento_usuario = usuario.personal.cargo.dpto_empresa.id_dpto_empresa
             nuevo_cargo = Cargo(nombre_cargo=nombre_cargo, 
                                 id_dpto_empresa=departamento_usuario)
 
@@ -22,7 +24,9 @@ def crear_cargo():
             db.session.commit()
 
             return redirect(url_for('creation.crear_cargo'))
-        return render_template('datos/crear_cargo.html', username=username)
+        
+        cargos = Cargo.query.join(DptoEmpresa).filter(DptoEmpresa.id_empresa == empresa_usuario).all()
+        return render_template('datos/crear_cargo.html', cargos=cargos, empresa_usuario=empresa_usuario, username=username)
     else:
         return redirect(url_for('auth.login'))
 
@@ -31,6 +35,7 @@ def crear_rol():
     if 'username' in session:
         username = session['username']
         usuario = Usuario.query.filter_by(username=username).first()
+        empresa_usuario = usuario.personal.cargo.dpto_empresa.empresa.id_empresa
 
         if request.method == 'POST':
             departamento_usuario = usuario.personal.cargo.dpto_empresa.id_dpto_empresa
@@ -43,7 +48,8 @@ def crear_rol():
 
             return redirect(url_for('creation.crear_rol'))
 
-        return render_template('datos/crear_rol.html', username=username)
+        roles = Rol.query.join(DptoEmpresa).filter(DptoEmpresa.id_empresa == empresa_usuario).all()
+        return render_template('datos/crear_rol.html', roles=roles, empresa_usuario=empresa_usuario, username=username)
     else:
         return redirect(url_for('auth.login'))
 
@@ -145,9 +151,10 @@ def crear_rol_usuario():
             db.session.add(nuevo_rol_usuario)
             db.session.commit()
 
-            return redirect(url_for('crud.lista_rol_usuario'))
-
-        return render_template('datos/crear_rol_usuario.html')
+            return redirect(url_for('creation.crear_rol_usuario'))
+        
+        roles_usuario = RolUsuario.query.all()
+        return render_template('datos/crear_rol_usuario.html', roles_usuario=roles_usuario)
     else:
         return redirect(url_for('auth.login'))
 
@@ -157,15 +164,16 @@ def crear_flota():
         username = session['username']
         usuario = Usuario.query.filter_by(username=username).first()
         departamento_usuario = usuario.personal.cargo.dpto_empresa.id_dpto_empresa
+        
         if request.method == 'POST':
             nombre_flota = request.form['nombre_flota']
-
             nueva_flota = Flota(nombre_flota=nombre_flota, id_dpto_empresa=departamento_usuario)
-
             db.session.add(nueva_flota)
             db.session.commit()
-
-        return render_template('datos/crear_flota.html')
+            return redirect(url_for('creation.crear_flota'))
+        
+        flotas = Flota.query.filter_by(id_dpto_empresa=departamento_usuario).all()
+        return render_template('datos/crear_flota.html', flotas=flotas, departamento_usuario=departamento_usuario)
     else:
         return redirect(url_for('auth.login'))
 
@@ -175,15 +183,16 @@ def crear_departamento():
         username = session['username']
         usuario = Usuario.query.filter_by(username=username).first()
         empresa_usuario = usuario.personal.cargo.dpto_empresa.empresa.id_empresa
+        
         if request.method == 'POST':
             nombre_departamento = request.form['nombre_departamento']
-
             nuevo_departamento = DptoEmpresa(nombre_dpto_empresa=nombre_departamento, id_empresa=empresa_usuario)
-
             db.session.add(nuevo_departamento)
             db.session.commit()
+            return redirect(url_for('creation.crear_departamento'))
 
-        return render_template('datos/crear_departamento.html')
+        departamentos = DptoEmpresa.query.filter_by(id_empresa=empresa_usuario).all()
+        return render_template('datos/crear_departamento.html', departamentos=departamentos, empresa_usuario=empresa_usuario, username=username)
     else:
         return redirect(url_for('auth.login'))
 
@@ -246,16 +255,16 @@ def crear_tv():
         username = session['username']
         usuario = Usuario.query.filter_by(username=username).first()
         departamento_usuario = usuario.personal.cargo.dpto_empresa.id_dpto_empresa
+        
         if request.method == 'POST':
             nombre_tv = request.form['nombre_tv']
             nuevo_tv = TipoVehiculo(nombre_tv=nombre_tv, id_dpto_empresa=departamento_usuario)
-
             db.session.add(nuevo_tv)
             db.session.commit()
-
-            return redirect(url_for('crud.lista_tv'))
-
-        return render_template('datos/crear_tipo_vehiculo.html')
+            return redirect(url_for('creation.crear_tv'))
+        
+        tipos_vehiculo = TipoVehiculo.query.filter_by(id_dpto_empresa=departamento_usuario).all()
+        return render_template('datos/crear_tipo_vehiculo.html', tipos_vehiculo=tipos_vehiculo)
     else:
         return redirect(url_for('auth.login'))
 

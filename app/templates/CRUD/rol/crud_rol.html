@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block maincontent %}
+<div class="container mt-4">
+    <h3>Detalles de Rol</h3>
+    
+    {% if rol %}
+        <div class="card">
+            <div class="card-header">
+                <h5>{{ rol.nombre_rol }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>ID Rol:</strong> {{ rol.id_rol }}</p>
+                        <p><strong>Nombre Rol:</strong> {{ rol.nombre_rol }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('crud.editar_rol', id_rol=rol.id_rol) }}" class="btn btn-primary">Editar</a>
+                <a href="{{ url_for('creation.crear_rol') }}" class="btn btn-secondary">Volver</a>
+                <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">Eliminar</button>
+            </div>
+        </div>
+
+        <!-- Modal de Confirmación de Eliminación -->
+        <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="deleteModalLabel">Confirmar Eliminación</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        ¿Está seguro de que desea eliminar el rol <strong>{{ rol.nombre_rol }}</strong>?
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <a href="{{ url_for('crud.eliminar_rol', id_rol=rol.id_rol) }}" class="btn btn-danger">Eliminar</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-danger">Rol no encontrado</div>
+        <a href="{{ url_for('creation.crear_rol') }}" class="btn btn-secondary">Volver a la lista</a>
+    {% endif %}
+</div>
+{% endblock maincontent %}

@@ -1,21 +1,176 @@
 {% extends 'base.html' %}
+
 {% block maincontent %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="containerForm">
-                <h1 class="mb-4 text-center">Agregar Flota</h1>
-                <form method="POST">
-                    <div class="mb-3">
-                        <label for="nombre_flota">Nombre de la flota:</label>
-                        <input type="text" name="nombre_flota" id="nombre_flota" class="form-control" required>
-                    </div>
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-success">Agregar Flota</button>
-                    </div>
-                </form>
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>Listado de Flotas</h3>
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalCrearFlota">
+            <i class="fas fa-plus"></i> Nueva Flota
+        </button>
+    </div>
+
+    <!-- Mensaje de alerta -->
+    <div id="alertaContainer"></div>
+
+    {% if flotas %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover" id="tablaFlotas">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre Flota</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="bodyFlotas">
+                    {% for flota in flotas %}
+                        <tr data-id="{{ flota.id_flota }}">
+                            <td>{{ flota.id_flota }}</td>
+                            <td>{{ flota.nombre_flota }}</td>
+                            <td>
+                                <a href="{{ url_for('crud.crud_flota', id_flota=flota.id_flota) }}" class="btn btn-sm btn-info" title="Ver detalles">
+                                    <i class="fas fa-eye"></i> Ver
+                                </a>
+                                <a href="{{ url_for('crud.editar_flota', id_flota=flota.id_flota) }}" class="btn btn-sm btn-warning" title="Editar">
+                                    <i class="fas fa-edit"></i> Editar
+                                </a>
+                                <a href="{{ url_for('crud.eliminar_flota', id_flota=flota.id_flota) }}" class="btn btn-sm btn-danger" onclick="return confirm('¿Está seguro de que desea eliminar esta flota?');" title="Eliminar">
+                                    <i class="fas fa-trash"></i> Eliminar
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            No hay flotas registradas. 
+            <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalCrearFlota">Crear una nueva flota</button>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Modal para Crear Flota -->
+<div class="modal fade" id="modalCrearFlota" tabindex="-1" aria-labelledby="modalCrearFlotaLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalCrearFlotaLabel">Nueva Flota</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+            <form id="formCrearFlota">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="nombre_flota" class="form-label">Nombre Flota *</label>
+                        <input type="text" class="form-control" id="nombre_flota" name="nombre_flota" required maxlength="30" placeholder="Ingrese el nombre de la flota">
+                        <small class="form-text text-muted">Máximo 30 caracteres</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success" id="btnGuardar">
+                        <i class="fas fa-save"></i> Crear Flota
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+
+<script>
+    // Manejar creación de flota
+    document.getElementById('formCrearFlota').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const nombre_flota = document.getElementById('nombre_flota').value.trim();
+        const btnGuardar = document.getElementById('btnGuardar');
+        const btnOriginalText = btnGuardar.innerHTML;
+        
+        if (!nombre_flota) {
+            mostrarAlerta('danger', 'El nombre de la flota es requerido');
+            return;
+        }
+        
+        btnGuardar.disabled = true;
+        btnGuardar.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...';
+        
+        try {
+            const response = await fetch('{{ url_for("crud.crear_flota_ajax") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    'nombre_flota': nombre_flota
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                mostrarAlerta('success', data.message);
+                document.getElementById('formCrearFlota').reset();
+                
+                const modal = bootstrap.Modal.getInstance(document.getElementById('modalCrearFlota'));
+                modal.hide();
+                
+                agregarFilaFlota(data.flota);
+                
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                mostrarAlerta('danger', data.message);
+            }
+        } catch (error) {
+            mostrarAlerta('danger', 'Error en la solicitud: ' + error.message);
+        } finally {
+            btnGuardar.disabled = false;
+            btnGuardar.innerHTML = btnOriginalText;
+        }
+    });
+    
+    function mostrarAlerta(tipo, mensaje) {
+        const alertaContainer = document.getElementById('alertaContainer');
+        const alertaHTML = `
+            <div class="alert alert-${tipo} alert-dismissible fade show" role="alert">
+                ${mensaje}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        alertaContainer.innerHTML = alertaHTML;
+        
+        setTimeout(() => {
+            const alerta = alertaContainer.querySelector('.alert');
+            if (alerta) {
+                const bsAlert = new bootstrap.Alert(alerta);
+                bsAlert.close();
+            }
+        }, 5000);
+    }
+    
+    function agregarFilaFlota(flota) {
+        const tbody = document.getElementById('bodyFlotas');
+        if (!tbody) return;
+        
+        const fila = document.createElement('tr');
+        fila.setAttribute('data-id', flota.id_flota);
+        fila.innerHTML = `
+            <td>${flota.id_flota}</td>
+            <td>${flota.nombre_flota}</td>
+            <td>
+                <a href="/crud_flota/${flota.id_flota}" class="btn btn-sm btn-info" title="Ver detalles">
+                    <i class="fas fa-eye"></i> Ver
+                </a>
+                <a href="/editar_flota/${flota.id_flota}" class="btn btn-sm btn-warning" title="Editar">
+                    <i class="fas fa-edit"></i> Editar
+                </a>
+                <a href="/eliminar_flota/${flota.id_flota}" class="btn btn-sm btn-danger" onclick="return confirm('¿Está seguro de que desea eliminar esta flota?');" title="Eliminar">
+                    <i class="fas fa-trash"></i> Eliminar
+                </a>
+            </td>
+        `;
+        tbody.appendChild(fila);
+    }
+</script>
+
 {% endblock maincontent %}

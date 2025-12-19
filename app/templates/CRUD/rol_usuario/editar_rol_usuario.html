@@ -6,13 +6,13 @@
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header bg-dark text-white">
-                    <h3>Editar Tipo de Vehículo</h3>
+                    <h3>Editar Rol de Usuario</h3>
                 </div>
                 <div class="card-body">
                     <form method="post">
                         <div class="mb-3">
-                            <label for="nombre_tv" class="form-label">Nombre del Tipo de Vehículo *</label>
-                            <input type="text" class="form-control" id="nombre_tv" name="nombre_tv" value="{{ tipo_vehiculo.nombre_tv }}" required maxlength="30" placeholder="Ingrese el nombre del tipo de vehículo">
+                            <label for="nombre_rol_usuario" class="form-label">Nombre del Rol de Usuario *</label>
+                            <input type="text" class="form-control" id="nombre_rol_usuario" name="nombre_rol_usuario" value="{{ rol_usuario.nombre_rol_usuario }}" required maxlength="30" placeholder="Ingrese el nombre del rol de usuario">
                             <small class="form-text text-muted">Máximo 30 caracteres</small>
                         </div>
                         
@@ -20,7 +20,7 @@
                             <button type="submit" class="btn btn-success">
                                 <i class="fas fa-save"></i> Guardar Cambios
                             </button>
-                            <a href="{{ url_for('creation.crear_tv') }}" class="btn btn-secondary">
+                            <a href="{{ url_for('creation.crear_rol_usuario') }}" class="btn btn-secondary">
                                 <i class="fas fa-times"></i> Cancelar
                             </a>
                         </div>

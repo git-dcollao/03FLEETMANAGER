@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block maincontent %}
+<div class="container mt-4">
+    <h3>Detalles de Cargo</h3>
+    
+    {% if cargo %}
+        <div class="card">
+            <div class="card-header">
+                <h5>{{ cargo.nombre_cargo }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>ID Cargo:</strong> {{ cargo.id_cargo }}</p>
+                        <p><strong>Nombre Cargo:</strong> {{ cargo.nombre_cargo }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('crud.editar_cargo', id_cargo=cargo.id_cargo) }}" class="btn btn-primary">Editar</a>
+                <a href="{{ url_for('creation.crear_cargo') }}" class="btn btn-secondary">Volver</a>
+                <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">Eliminar</button>
+            </div>
+        </div>
+
+        <!-- Modal de Confirmación de Eliminación -->
+        <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="deleteModalLabel">Confirmar Eliminación</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        ¿Está seguro de que desea eliminar el cargo <strong>{{ cargo.nombre_cargo }}</strong>?
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <a href="{{ url_for('crud.eliminar_cargo', id_cargo=cargo.id_cargo) }}" class="btn btn-danger">Eliminar</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-danger">Cargo no encontrado</div>
+        <a href="{{ url_for('creation.crear_cargo') }}" class="btn btn-secondary">Volver a la lista</a>
+    {% endif %}
+</div>
+{% endblock maincontent %}

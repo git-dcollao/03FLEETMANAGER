@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, session, jsonify, request, flash
 from app.db import db 
-from app.models import Usuario, DetalleTV, Vehiculo, TipoVehiculo, Flota, Personal, CoordenadasVehiculo, DptoEmpresa, Cargo, EquipoPersonal, Equipo, Empresa, Parametro, Falla, RolUsuario, Area, Coordenadas
+from app.models import Usuario, DetalleTV, Vehiculo, TipoVehiculo, Flota, Personal, CoordenadasVehiculo, DptoEmpresa, Cargo, EquipoPersonal, Equipo, Empresa, Parametro, Falla, RolUsuario, Area, Coordenadas, Rol
 from app.funciones import transformador
 from collections import defaultdict
 from sqlalchemy import or_
@@ -507,5 +507,498 @@ def lista_empresas():
     if 'username' in session:
         empresas = Empresa.query.all()
         return render_template('listas/lista_empresas.html', empresas=empresas)
+    else:
+        return redirect(url_for('auth.login'))
+
+@crud.route('/api/crear_empresa_ajax', methods=['POST'])
+def crear_empresa_ajax():
+    if 'username' in session:
+        nombre_empresa = request.form.get('nombre_empresa', '').strip()
+        
+        if not nombre_empresa:
+            return jsonify({'success': False, 'message': 'El nombre es requerido'}), 400
+        
+        try:
+            nueva_empresa = Empresa(nombre_empresa=nombre_empresa)
+            db.session.add(nueva_empresa)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True, 
+                'message': 'Empresa creada exitosamente',
+                'empresa': {
+                    'id_empresa': nueva_empresa.id_empresa,
+                    'nombre_empresa': nueva_empresa.nombre_empresa
+                }
+            }), 201
+        except IntegrityError:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': 'Esta empresa ya existe'}), 409
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+    else:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+# ==================== CRUD FLOTA ====================
+
+@crud.route('/api/crear_flota_ajax', methods=['POST'])
+def crear_flota_ajax():
+    if 'username' in session:
+        username = session['username']
+        usuario = Usuario.query.filter_by(username=username).first()
+        departamento_usuario = usuario.personal.cargo.dpto_empresa.id_dpto_empresa
+        
+        nombre_flota = request.form.get('nombre_flota', '').strip()
+        
+        if not nombre_flota:
+            return jsonify({'success': False, 'message': 'El nombre de la flota es requerido'}), 400
+        
+        try:
+            nueva_flota = Flota(nombre_flota=nombre_flota, id_dpto_empresa=departamento_usuario)
+            db.session.add(nueva_flota)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True, 
+                'message': 'Flota creada exitosamente',
+                'flota': {
+                    'id_flota': nueva_flota.id_flota,
+                    'nombre_flota': nueva_flota.nombre_flota
+                }
+            }), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+    else:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+
+@crud.route('/crud_flota/<int:id_flota>')
+def crud_flota(id_flota):
+    if 'username' in session:
+        flota = Flota.query.get(id_flota)
+        return render_template('CRUD/flota/crud_flota.html', flota=flota)
+    else:
+        return redirect(url_for('auth.login'))
+
+@crud.route('/editar_flota/<int:id_flota>', methods=['GET', 'POST'])
+def editar_flota(id_flota):
+    if 'username' in session:
+        flota = Flota.query.get(id_flota)
+        
+        if request.method == 'POST':
+            flota.nombre_flota = request.form['nombre_flota']
+            
+            try:
+                db.session.commit()
+                flash('Flota actualizada exitosamente', 'success')
+                return redirect(url_for('creation.crear_flota'))
+            except Exception as e:
+                flash(f'Error al actualizar la flota: {str(e)}', 'error')
+                db.session.rollback()
+
+        return render_template('CRUD/flota/editar_flota.html', flota=flota)
+    else:
+        return redirect(url_for('auth.login'))
+
+@crud.route('/eliminar_flota/<int:id_flota>')
+def eliminar_flota(id_flota):
+    if 'username' in session:
+        try:
+            flota = Flota.query.get(id_flota)
+            if flota:
+                db.session.delete(flota)
+                db.session.commit()
+                flash('Flota eliminada exitosamente', 'success')
+            return redirect(url_for('creation.crear_flota'))
+        except Exception as e:
+            flash(f'Error al eliminar la flota: {str(e)}', 'error')
+            db.session.rollback()
+            return redirect(url_for('creation.crear_flota'))
+    else:
+        return redirect(url_for('auth.login'))
+
+# ==================== CRUD CARGO ====================
+
+@crud.route('/api/crear_cargo_ajax', methods=['POST'])
+def crear_cargo_ajax():
+    if 'username' in session:
+        username = session['username']
+        usuario = Usuario.query.filter_by(username=username).first()
+        departamento_usuario = usuario.personal.cargo.dpto_empresa.id_dpto_empresa
+        
+        nombre_cargo = request.form.get('nombre_cargo', '').strip()
+        
+        if not nombre_cargo:
+            return jsonify({'success': False, 'message': 'El nombre del cargo es requerido'}), 400
+        
+        try:
+            nuevo_cargo = Cargo(nombre_cargo=nombre_cargo, id_dpto_empresa=departamento_usuario)
+            db.session.add(nuevo_cargo)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True, 
+                'message': 'Cargo creado exitosamente',
+                'cargo': {
+                    'id_cargo': nuevo_cargo.id_cargo,
+                    'nombre_cargo': nuevo_cargo.nombre_cargo
+                }
+            }), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+    else:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+
+@crud.route('/crud_cargo/<int:id_cargo>')
+def crud_cargo(id_cargo):
+    if 'username' in session:
+        cargo = Cargo.query.get(id_cargo)
+        return render_template('CRUD/cargo/crud_cargo.html', cargo=cargo)
+    else:
+        return redirect(url_for('auth.login'))
+
+@crud.route('/editar_cargo/<int:id_cargo>', methods=['GET', 'POST'])
+def editar_cargo(id_cargo):
+    if 'username' in session:
+        cargo = Cargo.query.get(id_cargo)
+        
+        if request.method == 'POST':
+            cargo.nombre_cargo = request.form['nombre_cargo']
+            
+            try:
+                db.session.commit()
+                flash('Cargo actualizado exitosamente', 'success')
+                return redirect(url_for('creation.crear_cargo'))
+            except Exception as e:
+                flash(f'Error al actualizar el cargo: {str(e)}', 'error')
+                db.session.rollback()
+
+        return render_template('CRUD/cargo/editar_cargo.html', cargo=cargo)
+    else:
+        return redirect(url_for('auth.login'))
+
+@crud.route('/eliminar_cargo/<int:id_cargo>')
+def eliminar_cargo(id_cargo):
+    if 'username' in session:
+        try:
+            cargo = Cargo.query.get(id_cargo)
+            if cargo:
+                db.session.delete(cargo)
+                db.session.commit()
+                flash('Cargo eliminado exitosamente', 'success')
+            return redirect(url_for('creation.crear_cargo'))
+        except Exception as e:
+            flash(f'Error al eliminar el cargo: {str(e)}', 'error')
+            db.session.rollback()
+            return redirect(url_for('creation.crear_cargo'))
+    else:
+        return redirect(url_for('auth.login'))
+
+# ==================== CRUD DEPARTAMENTO ====================
+
+@crud.route('/api/crear_departamento_ajax', methods=['POST'])
+def crear_departamento_ajax():
+    if 'username' in session:
+        username = session['username']
+        usuario = Usuario.query.filter_by(username=username).first()
+        empresa_usuario = usuario.personal.cargo.dpto_empresa.empresa.id_empresa
+        
+        nombre_departamento = request.form.get('nombre_dpto_empresa', '').strip()
+        
+        if not nombre_departamento:
+            return jsonify({'success': False, 'message': 'El nombre del departamento es requerido'}), 400
+        
+        try:
+            nuevo_departamento = DptoEmpresa(nombre_dpto_empresa=nombre_departamento, id_empresa=empresa_usuario)
+            db.session.add(nuevo_departamento)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True, 
+                'message': 'Departamento creado exitosamente',
+                'departamento': {
+                    'id_dpto_empresa': nuevo_departamento.id_dpto_empresa,
+                    'nombre_dpto_empresa': nuevo_departamento.nombre_dpto_empresa
+                }
+            }), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+    else:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+
+@crud.route('/crud_departamento/<int:id_dpto_empresa>')
+def crud_departamento(id_dpto_empresa):
+    if 'username' in session:
+        departamento = DptoEmpresa.query.get(id_dpto_empresa)
+        return render_template('CRUD/departamento/crud_departamento.html', departamento=departamento)
+    else:
+        return redirect(url_for('auth.login'))
+
+@crud.route('/editar_departamento/<int:id_dpto_empresa>', methods=['GET', 'POST'])
+def editar_departamento(id_dpto_empresa):
+    if 'username' in session:
+        departamento = DptoEmpresa.query.get(id_dpto_empresa)
+        
+        if request.method == 'POST':
+            departamento.nombre_dpto_empresa = request.form['nombre_dpto_empresa']
+            
+            try:
+                db.session.commit()
+                flash('Departamento actualizado exitosamente', 'success')
+                return redirect(url_for('creation.crear_departamento'))
+            except Exception as e:
+                flash(f'Error al actualizar el departamento: {str(e)}', 'error')
+                db.session.rollback()
+
+        return render_template('CRUD/departamento/editar_departamento.html', departamento=departamento)
+    else:
+        return redirect(url_for('auth.login'))
+
+@crud.route('/eliminar_departamento/<int:id_dpto_empresa>')
+def eliminar_departamento(id_dpto_empresa):
+    if 'username' in session:
+        try:
+            departamento = DptoEmpresa.query.get(id_dpto_empresa)
+            if departamento:
+                db.session.delete(departamento)
+                db.session.commit()
+                flash('Departamento eliminado exitosamente', 'success')
+            return redirect(url_for('creation.crear_departamento'))
+        except Exception as e:
+            flash(f'Error al eliminar el departamento: {str(e)}', 'error')
+            db.session.rollback()
+            return redirect(url_for('creation.crear_departamento'))
+    else:
+        return redirect(url_for('auth.login'))
+
+# ==================== CRUD ROL ====================
+
+@crud.route('/api/crear_rol_ajax', methods=['POST'])
+def crear_rol_ajax():
+    if 'username' in session:
+        username = session['username']
+        usuario = Usuario.query.filter_by(username=username).first()
+        departamento_usuario = usuario.personal.cargo.dpto_empresa.id_dpto_empresa
+        
+        nombre_rol = request.form.get('nombre_rol', '').strip()
+        
+        if not nombre_rol:
+            return jsonify({'success': False, 'message': 'El nombre del rol es requerido'}), 400
+        
+        try:
+            nuevo_rol = Rol(nombre_rol=nombre_rol, id_dpto_empresa=departamento_usuario)
+            db.session.add(nuevo_rol)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True, 
+                'message': 'Rol creado exitosamente',
+                'rol': {
+                    'id_rol': nuevo_rol.id_rol,
+                    'nombre_rol': nuevo_rol.nombre_rol
+                }
+            }), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+    else:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+
+@crud.route('/crud_rol/<int:id_rol>')
+def crud_rol(id_rol):
+    if 'username' in session:
+        rol = Rol.query.get(id_rol)
+        return render_template('CRUD/rol/crud_rol.html', rol=rol)
+    else:
+        return redirect(url_for('auth.login'))
+
+@crud.route('/editar_rol/<int:id_rol>', methods=['GET', 'POST'])
+def editar_rol(id_rol):
+    if 'username' in session:
+        rol = Rol.query.get(id_rol)
+        
+        if request.method == 'POST':
+            rol.nombre_rol = request.form['nombre_rol']
+            
+            try:
+                db.session.commit()
+                flash('Rol actualizado exitosamente', 'success')
+                return redirect(url_for('creation.crear_rol'))
+            except Exception as e:
+                flash(f'Error al actualizar el rol: {str(e)}', 'error')
+                db.session.rollback()
+
+        return render_template('CRUD/rol/editar_rol.html', rol=rol)
+    else:
+        return redirect(url_for('auth.login'))
+
+@crud.route('/eliminar_rol/<int:id_rol>')
+def eliminar_rol(id_rol):
+    if 'username' in session:
+        try:
+            rol = Rol.query.get(id_rol)
+            if rol:
+                db.session.delete(rol)
+                db.session.commit()
+                flash('Rol eliminado exitosamente', 'success')
+            return redirect(url_for('creation.crear_rol'))
+        except Exception as e:
+            flash(f'Error al eliminar el rol: {str(e)}', 'error')
+            db.session.rollback()
+            return redirect(url_for('creation.crear_rol'))
+    else:
+        return redirect(url_for('auth.login'))
+
+# ==================== CRUD ROL USUARIO ====================
+
+@crud.route('/api/crear_rol_usuario_ajax', methods=['POST'])
+def crear_rol_usuario_ajax():
+    if 'username' in session:
+        nombre_rol_usuario = request.form.get('nombre_rol_usuario', '').strip()
+        
+        if not nombre_rol_usuario:
+            return jsonify({'success': False, 'message': 'El nombre del rol de usuario es requerido'}), 400
+        
+        try:
+            nuevo_rol_usuario = RolUsuario(nombre_rol_usuario=nombre_rol_usuario)
+            db.session.add(nuevo_rol_usuario)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True, 
+                'message': 'Rol de usuario creado exitosamente',
+                'rol_usuario': {
+                    'id_rol_usuario': nuevo_rol_usuario.id_rol_usuario,
+                    'nombre_rol_usuario': nuevo_rol_usuario.nombre_rol_usuario
+                }
+            }), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+    else:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+
+@crud.route('/crud_rol_usuario/<int:id_rol_usuario>')
+def crud_rol_usuario(id_rol_usuario):
+    if 'username' in session:
+        rol_usuario = RolUsuario.query.get(id_rol_usuario)
+        return render_template('CRUD/rol_usuario/crud_rol_usuario.html', rol_usuario=rol_usuario)
+    else:
+        return redirect(url_for('auth.login'))
+
+@crud.route('/editar_rol_usuario/<int:id_rol_usuario>', methods=['GET', 'POST'])
+def editar_rol_usuario(id_rol_usuario):
+    if 'username' in session:
+        rol_usuario = RolUsuario.query.get(id_rol_usuario)
+        
+        if request.method == 'POST':
+            rol_usuario.nombre_rol_usuario = request.form['nombre_rol_usuario']
+            
+            try:
+                db.session.commit()
+                flash('Rol de usuario actualizado exitosamente', 'success')
+                return redirect(url_for('creation.crear_rol_usuario'))
+            except Exception as e:
+                flash(f'Error al actualizar el rol de usuario: {str(e)}', 'error')
+                db.session.rollback()
+
+        return render_template('CRUD/rol_usuario/editar_rol_usuario.html', rol_usuario=rol_usuario)
+    else:
+        return redirect(url_for('auth.login'))
+
+@crud.route('/eliminar_rol_usuario/<int:id_rol_usuario>')
+def eliminar_rol_usuario(id_rol_usuario):
+    if 'username' in session:
+        try:
+            rol_usuario = RolUsuario.query.get(id_rol_usuario)
+            if rol_usuario:
+                db.session.delete(rol_usuario)
+                db.session.commit()
+                flash('Rol de usuario eliminado exitosamente', 'success')
+            return redirect(url_for('creation.crear_rol_usuario'))
+        except Exception as e:
+            flash(f'Error al eliminar el rol de usuario: {str(e)}', 'error')
+            db.session.rollback()
+            return redirect(url_for('creation.crear_rol_usuario'))
+    else:
+        return redirect(url_for('auth.login'))
+
+# ==================== CRUD TIPO VEHICULO ====================
+
+@crud.route('/api/crear_tipo_vehiculo_ajax', methods=['POST'])
+def crear_tipo_vehiculo_ajax():
+    if 'username' in session:
+        username = session['username']
+        usuario = Usuario.query.filter_by(username=username).first()
+        departamento_usuario = usuario.personal.cargo.dpto_empresa.id_dpto_empresa
+        
+        nombre_tv = request.form.get('nombre_tv', '').strip()
+        
+        if not nombre_tv:
+            return jsonify({'success': False, 'message': 'El nombre del tipo de vehículo es requerido'}), 400
+        
+        try:
+            nuevo_tipo_vehiculo = TipoVehiculo(nombre_tv=nombre_tv, id_dpto_empresa=departamento_usuario)
+            db.session.add(nuevo_tipo_vehiculo)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True, 
+                'message': 'Tipo de vehículo creado exitosamente',
+                'tipo_vehiculo': {
+                    'id_tv': nuevo_tipo_vehiculo.id_tv,
+                    'nombre_tv': nuevo_tipo_vehiculo.nombre_tv
+                }
+            }), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+    else:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+
+@crud.route('/crud_tipo_vehiculo/<int:id_tv>')
+def crud_tipo_vehiculo(id_tv):
+    if 'username' in session:
+        tipo_vehiculo = TipoVehiculo.query.get(id_tv)
+        return render_template('CRUD/tipo_vehiculo/crud_tipo_vehiculo.html', tipo_vehiculo=tipo_vehiculo)
+    else:
+        return redirect(url_for('auth.login'))
+
+@crud.route('/editar_tipo_vehiculo/<int:id_tv>', methods=['GET', 'POST'])
+def editar_tipo_vehiculo(id_tv):
+    if 'username' in session:
+        tipo_vehiculo = TipoVehiculo.query.get(id_tv)
+        
+        if request.method == 'POST':
+            tipo_vehiculo.nombre_tv = request.form['nombre_tv']
+            
+            try:
+                db.session.commit()
+                flash('Tipo de vehículo actualizado exitosamente', 'success')
+                return redirect(url_for('creation.crear_tv'))
+            except Exception as e:
+                flash(f'Error al actualizar el tipo de vehículo: {str(e)}', 'error')
+                db.session.rollback()
+
+        return render_template('CRUD/tipo_vehiculo/editar_tipo_vehiculo.html', tipo_vehiculo=tipo_vehiculo)
+    else:
+        return redirect(url_for('auth.login'))
+
+@crud.route('/eliminar_tipo_vehiculo/<int:id_tv>')
+def eliminar_tipo_vehiculo(id_tv):
+    if 'username' in session:
+        try:
+            tipo_vehiculo = TipoVehiculo.query.get(id_tv)
+            if tipo_vehiculo:
+                db.session.delete(tipo_vehiculo)
+                db.session.commit()
+                flash('Tipo de vehículo eliminado exitosamente', 'success')
+            return redirect(url_for('creation.crear_tv'))
+        except Exception as e:
+            flash(f'Error al eliminar el tipo de vehículo: {str(e)}', 'error')
+            db.session.rollback()
+            return redirect(url_for('creation.crear_tv'))
     else:
         return redirect(url_for('auth.login'))

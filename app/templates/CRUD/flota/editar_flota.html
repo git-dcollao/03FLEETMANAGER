@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block maincontent %}
+<div class="container mt-4">
+    <h3>Editar Flota</h3>
+
+    {% if flota %}
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('crud.editar_flota', id_flota=flota.id_flota) }}">
+                    <div class="mb-3">
+                        <label for="nombre_flota" class="form-label">Nombre Flota *</label>
+                        <input type="text" class="form-control" id="nombre_flota" name="nombre_flota" value="{{ flota.nombre_flota }}" required maxlength="30">
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('creation.crear_flota') }}" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-danger">Flota no encontrada</div>
+        <a href="{{ url_for('creation.crear_flota') }}" class="btn btn-secondary">Volver a la lista</a>
+    {% endif %}
+</div>
+{% endblock maincontent %}

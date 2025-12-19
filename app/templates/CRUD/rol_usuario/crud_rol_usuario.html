@@ -6,28 +6,28 @@
         <div class="col-md-8">
             <div class="card">
                 <div class="card-header bg-dark text-white">
-                    <h3>Detalles del Tipo de Vehículo</h3>
+                    <h3>Detalles del Rol de Usuario</h3>
                 </div>
                 <div class="card-body">
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <strong>ID:</strong>
-                            <p>{{ tipo_vehiculo.id_tv }}</p>
+                            <p>{{ rol_usuario.id_rol_usuario }}</p>
                         </div>
                         <div class="col-md-6">
-                            <strong>Nombre del Tipo de Vehículo:</strong>
-                            <p>{{ tipo_vehiculo.nombre_tv }}</p>
+                            <strong>Nombre del Rol de Usuario:</strong>
+                            <p>{{ rol_usuario.nombre_rol_usuario }}</p>
                         </div>
                     </div>
                     
                     <div class="mt-4">
-                        <a href="{{ url_for('crud.editar_tipo_vehiculo', id_tv=tipo_vehiculo.id_tv) }}" class="btn btn-warning">
+                        <a href="{{ url_for('crud.editar_rol_usuario', id_rol_usuario=rol_usuario.id_rol_usuario) }}" class="btn btn-warning">
                             <i class="fas fa-edit"></i> Editar
                         </a>
-                        <a href="{{ url_for('crud.eliminar_tipo_vehiculo', id_tv=tipo_vehiculo.id_tv) }}" class="btn btn-danger" onclick="return confirm('¿Está seguro de que desea eliminar este tipo de vehículo?');">
+                        <a href="{{ url_for('crud.eliminar_rol_usuario', id_rol_usuario=rol_usuario.id_rol_usuario) }}" class="btn btn-danger" onclick="return confirm('¿Está seguro de que desea eliminar este rol de usuario?');">
                             <i class="fas fa-trash"></i> Eliminar
                         </a>
-                        <a href="{{ url_for('creation.crear_tv') }}" class="btn btn-secondary">
+                        <a href="{{ url_for('creation.crear_rol_usuario') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left"></i> Volver
                         </a>
                     </div>

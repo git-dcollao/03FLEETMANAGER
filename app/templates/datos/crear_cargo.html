@@ -1,21 +1,176 @@
 {% extends 'base.html' %}
+
 {% block maincontent %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="containerForm">
-                <h1 class="text-center mb-4">Crear Cargo</h1>
-                <form method="POST">
-                    <div class="mb-3">
-                        <label for="nombre_cargo" class="form-label">Nombre del Cargo:</label>
-                        <input type="text" class="form-control" id="nombre_cargo" name="nombre_cargo" required>
-                    </div>
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-success btn-block">Crear Cargo</button>
-                    </div>
-                </form>
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>Listado de Cargos</h3>
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalCrearCargo">
+            <i class="fas fa-plus"></i> Nuevo Cargo
+        </button>
+    </div>
+
+    <!-- Mensaje de alerta -->
+    <div id="alertaContainer"></div>
+
+    {% if cargos %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover" id="tablaCargos">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre Cargo</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="bodyCargos">
+                    {% for cargo in cargos %}
+                        <tr data-id="{{ cargo.id_cargo }}">
+                            <td>{{ cargo.id_cargo }}</td>
+                            <td>{{ cargo.nombre_cargo }}</td>
+                            <td>
+                                <a href="{{ url_for('crud.crud_cargo', id_cargo=cargo.id_cargo) }}" class="btn btn-sm btn-info" title="Ver detalles">
+                                    <i class="fas fa-eye"></i> Ver
+                                </a>
+                                <a href="{{ url_for('crud.editar_cargo', id_cargo=cargo.id_cargo) }}" class="btn btn-sm btn-warning" title="Editar">
+                                    <i class="fas fa-edit"></i> Editar
+                                </a>
+                                <a href="{{ url_for('crud.eliminar_cargo', id_cargo=cargo.id_cargo) }}" class="btn btn-sm btn-danger" onclick="return confirm('¿Está seguro de que desea eliminar este cargo?');" title="Eliminar">
+                                    <i class="fas fa-trash"></i> Eliminar
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            No hay cargos registrados. 
+            <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalCrearCargo">Crear un nuevo cargo</button>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Modal para Crear Cargo -->
+<div class="modal fade" id="modalCrearCargo" tabindex="-1" aria-labelledby="modalCrearCargoLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalCrearCargoLabel">Nuevo Cargo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+            <form id="formCrearCargo">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="nombre_cargo" class="form-label">Nombre Cargo *</label>
+                        <input type="text" class="form-control" id="nombre_cargo" name="nombre_cargo" required maxlength="30" placeholder="Ingrese el nombre del cargo">
+                        <small class="form-text text-muted">Máximo 30 caracteres</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success" id="btnGuardar">
+                        <i class="fas fa-save"></i> Crear Cargo
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+
+<script>
+    // Manejar creación de cargo
+    document.getElementById('formCrearCargo').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const nombre_cargo = document.getElementById('nombre_cargo').value.trim();
+        const btnGuardar = document.getElementById('btnGuardar');
+        const btnOriginalText = btnGuardar.innerHTML;
+        
+        if (!nombre_cargo) {
+            mostrarAlerta('danger', 'El nombre del cargo es requerido');
+            return;
+        }
+        
+        btnGuardar.disabled = true;
+        btnGuardar.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...';
+        
+        try {
+            const response = await fetch('{{ url_for("crud.crear_cargo_ajax") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    'nombre_cargo': nombre_cargo
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                mostrarAlerta('success', data.message);
+                document.getElementById('formCrearCargo').reset();
+                
+                const modal = bootstrap.Modal.getInstance(document.getElementById('modalCrearCargo'));
+                modal.hide();
+                
+                agregarFilaCargo(data.cargo);
+                
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                mostrarAlerta('danger', data.message);
+            }
+        } catch (error) {
+            mostrarAlerta('danger', 'Error en la solicitud: ' + error.message);
+        } finally {
+            btnGuardar.disabled = false;
+            btnGuardar.innerHTML = btnOriginalText;
+        }
+    });
+    
+    function mostrarAlerta(tipo, mensaje) {
+        const alertaContainer = document.getElementById('alertaContainer');
+        const alertaHTML = `
+            <div class="alert alert-${tipo} alert-dismissible fade show" role="alert">
+                ${mensaje}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        alertaContainer.innerHTML = alertaHTML;
+        
+        setTimeout(() => {
+            const alerta = alertaContainer.querySelector('.alert');
+            if (alerta) {
+                const bsAlert = new bootstrap.Alert(alerta);
+                bsAlert.close();
+            }
+        }, 5000);
+    }
+    
+    function agregarFilaCargo(cargo) {
+        const tbody = document.getElementById('bodyCargos');
+        if (!tbody) return;
+        
+        const fila = document.createElement('tr');
+        fila.setAttribute('data-id', cargo.id_cargo);
+        fila.innerHTML = `
+            <td>${cargo.id_cargo}</td>
+            <td>${cargo.nombre_cargo}</td>
+            <td>
+                <a href="/crud_cargo/${cargo.id_cargo}" class="btn btn-sm btn-info" title="Ver detalles">
+                    <i class="fas fa-eye"></i> Ver
+                </a>
+                <a href="/editar_cargo/${cargo.id_cargo}" class="btn btn-sm btn-warning" title="Editar">
+                    <i class="fas fa-edit"></i> Editar
+                </a>
+                <a href="/eliminar_cargo/${cargo.id_cargo}" class="btn btn-sm btn-danger" onclick="return confirm('¿Está seguro de que desea eliminar este cargo?');" title="Eliminar">
+                    <i class="fas fa-trash"></i> Eliminar
+                </a>
+            </td>
+        `;
+        tbody.appendChild(fila);
+    }
+</script>
+
 {% endblock maincontent %}

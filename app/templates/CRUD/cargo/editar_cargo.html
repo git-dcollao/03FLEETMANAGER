@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block maincontent %}
+<div class="container mt-4">
+    <h3>Editar Cargo</h3>
+
+    {% if cargo %}
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('crud.editar_cargo', id_cargo=cargo.id_cargo) }}">
+                    <div class="mb-3">
+                        <label for="nombre_cargo" class="form-label">Nombre Cargo *</label>
+                        <input type="text" class="form-control" id="nombre_cargo" name="nombre_cargo" value="{{ cargo.nombre_cargo }}" required maxlength="30">
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('creation.crear_cargo') }}" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-danger">Cargo no encontrado</div>
+        <a href="{{ url_for('creation.crear_cargo') }}" class="btn btn-secondary">Volver a la lista</a>
+    {% endif %}
+</div>
+{% endblock maincontent %}
