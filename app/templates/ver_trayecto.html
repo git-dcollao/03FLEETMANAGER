@@ -3,7 +3,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/json2/20160511/json2.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
-    <script src="../static/JS/scripts.js"></script>
+    <script src="../static/JS/scripts.js?v=20260127-v2"></script>
 {% endblock %}
 
 {% block body %}
@@ -52,7 +52,21 @@
 {% endblock %}
 
 {% block maincontent %}
-<div id="map" class="mapa" style="height: 800px; margin-top: 40px;"></div>
+{% if error %}
+    <div class="alert alert-warning alert-dismissible fade show" role="alert" style="margin-top: 40px;">
+        <strong>⚠️ Aviso:</strong> {{ error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <div id="map" class="mapa" style="height: 800px; margin-top: 20px;"></div>
+{% elif coordenadas_vehiculo|length == 0 %}
+    <div class="alert alert-info alert-dismissible fade show" role="alert" style="margin-top: 40px;">
+        <strong>ℹ️ Información:</strong> No hay datos de trayecto disponibles para mostrar.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <div id="map" class="mapa" style="height: 800px; margin-top: 20px;"></div>
+{% else %}
+    <div id="map" class="mapa" style="height: 800px; margin-top: 40px;"></div>
+{% endif %}
 {% endblock %}
 {% block scripts %}
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -61,6 +75,8 @@
 <script>
     const IP = "localhost";
     const PORT = "8080";
+    const OSRM_HOST = "localhost";
+    const OSRM_PORT = "5555";
     const COLOR = "purple";
     const BORDER_COLOR = "white";
     const BORDER_SIZE = 1;
@@ -69,8 +85,10 @@
     let previousMarkers = [];
     let markers = [];
     let coordenadas_vehiculo = {{ coordenadas_vehiculo | tojson }};
-    console.log(coordenadas_vehiculo);
-    let initialCoords = [coordenadas_vehiculo[0].latitud, coordenadas_vehiculo[0].longitud];
+    console.log("Coordenadas recibidas:", coordenadas_vehiculo);
+    let initialCoords = (coordenadas_vehiculo && coordenadas_vehiculo.length > 0) 
+        ? [coordenadas_vehiculo[0].latitud, coordenadas_vehiculo[0].longitud]
+        : [-33.8688197, -56.1693600]; // Coordenadas por defecto (Uruguay)
     let animationInterval;
     let heatLayer;
     let routingControls = [];
@@ -78,10 +96,16 @@
 
     // Inicializar el mapa
     function initMap() {
+        // Validar que haya coordenadas disponibles
+        if (!coordenadas_vehiculo || coordenadas_vehiculo.length === 0) {
+            console.warn("No hay coordenadas disponibles para mostrar en el mapa");
+            initialCoords = [-33.8688197, -56.1693600]; // Coordenadas por defecto (Uruguay)
+        }
+        
         map = L.map('map', {
             maxZoom: 18,
             minZoom: 1
-        }).setView((initialCoords), 13);
+        }).setView(initialCoords, 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
@@ -90,10 +114,16 @@
         // Plot areas
         plotAreas(areas);
 
-        document.getElementById('toggleCercos').addEventListener('change', toggleLayerVisibility);
-        document.getElementById('toggleZTrabajos').addEventListener('change', toggleLayerVisibility);
-        document.getElementById('toggleCuadrantes').addEventListener('change', toggleLayerVisibility);
-        document.getElementById('toggleSectores').addEventListener('change', toggleLayerVisibility);
+        // Solo agregar event listeners si los elementos existen
+        const toggleCercos = document.getElementById('toggleCercos');
+        const toggleZTrabajos = document.getElementById('toggleZTrabajos');
+        const toggleCuadrantes = document.getElementById('toggleCuadrantes');
+        const toggleSectores = document.getElementById('toggleSectores');
+        
+        if (toggleCercos) toggleCercos.addEventListener('change', toggleLayerVisibility);
+        if (toggleZTrabajos) toggleZTrabajos.addEventListener('change', toggleLayerVisibility);
+        if (toggleCuadrantes) toggleCuadrantes.addEventListener('change', toggleLayerVisibility);
+        if (toggleSectores) toggleSectores.addEventListener('change', toggleLayerVisibility);
     }
 
 
@@ -117,14 +147,21 @@
     }
 
     function plotCoordinatesByDateAndTime() {
+        console.log(">>> plotCoordinatesByDateAndTime LLAMADA");
+        
         let fechaSeleccionada = document.getElementById('fecha').value;
         let horaInicio = document.getElementById('horaInicio').value;
         let horaFin = document.getElementById('horaFin').value;
 
+        console.log('Filtros seleccionados:', {fecha: fechaSeleccionada, horaInicio, horaFin});
+        
         let coordenadasFecha = coordenadas_vehiculo.filter(function (coord) {
             return coord.fecha === fechaSeleccionada && coord.hora >= horaInicio && coord.hora <= horaFin;
         });
 
+        console.log(`Coordenadas filtradas: ${coordenadasFecha.length} de ${coordenadas_vehiculo.length} totales`);
+        console.log('Primeras 3 coordenadas filtradas:', coordenadasFecha.slice(0, 3));
+        
         plotCoordinates(coordenadasFecha);
     }
 
@@ -192,85 +229,178 @@
         clearRoutingControls();
         plotAreas(areas);
 
-        let routingPoints = coordenadas.map(function (coord) {
-            return L.latLng(coord.latitud, coord.longitud);
-        });
-
-        // Crear rutas entre cada punto y el siguiente
-        for (let i = 0; i < coordenadas.length - 1; i++) {
-            let startPoint = routingPoints[i];
-            let endPoint = routingPoints[i + 1];
-
-            let routingControl = L.Routing.control({
-                waypoints: [startPoint, endPoint],
-                routeWhileDragging: false,
-                show: false,
-                addWaypoints: false,
-                draggableWaypoints: false,
-                fitSelectedRoutes: false,
-                serviceUrl: `http://${IP}:${PORT}/route/v1`,
-                lineOptions: {
-                    styles: [{ color: COLOR }]
-                },
-                createMarker: function () { return null; },
-                match: true
-            }).addTo(map);
-
-            routingControls.push(routingControl);
+        // Validar que haya coordenadas
+        if (!coordenadas || coordenadas.length === 0) {
+            console.warn("No hay coordenadas para graficar en los criterios seleccionados");
+            alert("No hay coordenadas disponibles para los criterios seleccionados (fecha y hora)");
+            return;
         }
 
-        for (let i = 0; i < coordenadas.length; i++) {
-            let currentCoords = coordenadas[i];
-            let customMarker = createCustomMarker([currentCoords.latitud, currentCoords.longitud], COLOR);
-
-            let markerColor = COLOR;
-            let borderColor = BORDER_COLOR
-            let borderSize = BORDER_SIZE
-
-            if (i > 0) {
-                let horaActual = new Date(currentCoords.fecha + 'T' + currentCoords.hora);
-                let horaAnterior = new Date(coordenadas[i - 1].fecha + 'T' + coordenadas[i - 1].hora);
-                let diferenciaMinutos = (horaActual - horaAnterior) / (1000 * 60);
-
-                if (diferenciaMinutos > 40) {
-                    markerColor = 'red';
+        // Primero ajustar los puntos GPS a la red vial usando OSRM /nearest
+        adjustPointsToRoad(coordenadas, function(adjustedCoordinates) {
+            console.log("Puntos ajustados a la red vial:", adjustedCoordinates.length);
+            
+            // Usar OSRM para crear la ruta entre los puntos ajustados
+            getRouteFromOSRM(adjustedCoordinates, function(routeData) {
+                console.log("OSRM callback - route:", routeData && routeData.route ? routeData.route.length + " puntos" : "null");
+                
+                if (previousPolyline) {
+                    map.removeLayer(previousPolyline);
+                    previousPolyline = null;
                 }
-            }
+                
+                let route = routeData ? routeData.route : null;
+                let totalDistance = routeData ? routeData.distance : 0;
+                let totalDuration = routeData ? routeData.duration : 0;
+                let legs = routeData && routeData.legs ? routeData.legs : [];
+                
+                console.log(`Distancia total OSRM: ${(totalDistance/1000).toFixed(2)} km, Duración: ${(totalDuration/60).toFixed(2)} min`);
+                console.log(`Legs individuales: ${legs.length}`);
+                
+                if (route && route.length > 0) {
+                    // Dibujar la ruta OSRM ajustada a las calles
+                    previousPolyline = L.polyline(route, {
+                        color: 'green',
+                        weight: 3,
+                        opacity: 0.8,
+                        lineJoin: 'round',
+                        fillOpacity: 0
+                    }).addTo(map);
+                    console.log("Ruta OSRM dibujada con " + route.length + " puntos siguiendo calles");
+                } else {
+                    // Fallback: línea directa si OSRM falla completamente
+                    console.warn("OSRM falló, usando línea directa");
+                    let polylineCoordinates = adjustedCoordinates.map(function (coord) {
+                        return [coord.latitud, coord.longitud];
+                    });
 
-            let markerSize = [8, 8];
+                    if (polylineCoordinates.length > 1) {
+                        previousPolyline = L.polyline(polylineCoordinates, {
+                            color: 'green',
+                            weight: 3,
+                            opacity: 0.8,
+                            lineJoin: 'round'
+                        }).addTo(map);
+                    }
+                }
+                
+                // Agregar marcadores usando los puntos ajustados a la red vial
+                for (let i = 0; i < adjustedCoordinates.length; i++) {
+                    let currentCoords = adjustedCoordinates[i];
+                    let markerColor = 'purple';  // Puntos GPS normales en morado
+                    let borderColor = BORDER_COLOR;
+                    let borderSize = BORDER_SIZE;
+                    let markerSize = [8, 8];  // Tamaño pequeño para puntos GPS
 
-            if (i == 0) {
-                markerColor = 'green';
-            }
+                    // Primer punto (inicio)
+                    if (i == 0) {
+                        markerColor = 'green';
+                        markerSize = [16, 16];
+                        borderSize = 3;
+                    }
 
-            if (i == coordenadas.length - 1) {
-                markerColor = 'green';
-                borderColor = 'black';
-            }
+                    // Último punto (fin)
+                    if (i == adjustedCoordinates.length - 1) {
+                        markerColor = 'green';
+                        borderColor = 'black';
+                        markerSize = [16, 16];
+                        borderSize = 3;
+                    }
 
-            if (markerColor == 'green') {
-                markerSize = [16, 16];
-                borderSize = 3;
-            }
+                    // Detectar gaps (pausas largas > 40 min)
+                    if (i > 0) {
+                        let horaActual = new Date(currentCoords.fecha + 'T' + currentCoords.hora);
+                        let horaAnterior = new Date(adjustedCoordinates[i - 1].fecha + 'T' + adjustedCoordinates[i - 1].hora);
+                        let diferenciaMinutos = (horaActual - horaAnterior) / (1000 * 60);
 
-            if (markerColor == 'red') {
-                markerSize = [16, 16];
-                borderSize = 3;
-            }
+                        if (diferenciaMinutos > 40) {
+                            markerColor = 'red';
+                            markerSize = [16, 16];
+                            borderSize = 3;
+                        }
+                    }
 
-            customMarker.addTo(map);
-            customMarker.setZIndexOffset(999);
-            customMarker.bindPopup('Coordenada ' + (i + 1) + '<br>' + 'Fecha: ' + currentCoords.fecha + ' | ' + currentCoords.hora + '<br>' + 'Velocidad: ' + currentCoords.velocidad + ' Km/h' + ' | ' + 'Distancia: ' + currentCoords.distancia + ' m');
+                    // Crear marcador en la posición ajustada a la red vial
+                    let customMarker = createCustomMarker([currentCoords.latitud, currentCoords.longitud], markerColor);
+                    customMarker.addTo(map);
+                    customMarker.setZIndexOffset(999);
+                    
+                    // Popup con datos originales y ajustados
+                    let popupContent = 'Coordenada ' + (i + 1) + '<br>' + 
+                                     'Fecha: ' + currentCoords.fecha + ' | ' + currentCoords.hora + '<br>' + 
+                                     'Velocidad: ' + currentCoords.velocidad + ' Km/h' + '<br>' + 
+                                     'Distancia GPS: ' + currentCoords.distancia + ' m';
+                    
+                    // Mostrar distancia OSRM desde el punto anterior (si existe)
+                    if (i > 0 && legs && legs[i-1]) {
+                        let legDistancePrev = legs[i-1].distance || 0;
+                        let legDurationPrev = legs[i-1].duration || 0;
+                        popupContent += '<br><strong>⬅️ OSRM desde punto anterior:</strong>';
+                        popupContent += '<br>  Distancia recorrida: ' + (legDistancePrev).toFixed(0) + ' m (' + (legDistancePrev/1000).toFixed(2) + ' km)';
+                        popupContent += '<br>  Duración: ' + (legDurationPrev/60).toFixed(2) + ' min';
+                        
+                        // Calcular velocidad promedio del segmento
+                        if (legDurationPrev > 0) {
+                            let velocidadPromedio = (legDistancePrev / legDurationPrev) * 3.6; // m/s a km/h
+                            popupContent += '<br>  Velocidad promedio: ' + velocidadPromedio.toFixed(1) + ' km/h';
+                        }
+                    }
+                    
+                    // Mostrar distancia OSRM al siguiente punto (si no es el último)
+                    if (i < adjustedCoordinates.length - 1 && legs && legs[i]) {
+                        let legDistanceNext = legs[i].distance || 0;
+                        let legDurationNext = legs[i].duration || 0;
+                        popupContent += '<br><strong>➡️ OSRM al siguiente punto:</strong>';
+                        popupContent += '<br>  Distancia a recorrer: ' + (legDistanceNext).toFixed(0) + ' m (' + (legDistanceNext/1000).toFixed(2) + ' km)';
+                        popupContent += '<br>  Duración estimada: ' + (legDurationNext/60).toFixed(2) + ' min';
+                        
+                        // Comparar con el segmento anterior si existe
+                        if (i > 0 && legs[i-1]) {
+                            let legDistancePrev = legs[i-1].distance || 0;
+                            let diferencia = legDistanceNext - legDistancePrev;
+                            let porcentaje = legDistancePrev > 0 ? ((diferencia / legDistancePrev) * 100) : 0;
+                            
+                            if (Math.abs(diferencia) > 100) { // Solo mostrar si la diferencia es > 100m
+                                let icono = diferencia > 0 ? '📈' : '📉';
+                                let color = diferencia > 0 ? 'orange' : 'green';
+                                popupContent += '<br>  <span style="color:' + color + ';">' + icono + ' Diferencia: ' + 
+                                              (diferencia > 0 ? '+' : '') + (diferencia).toFixed(0) + ' m (' + 
+                                              (porcentaje > 0 ? '+' : '') + porcentaje.toFixed(1) + '%)</span>';
+                            }
+                        }
+                    }
+                    
+                    if (i === 0) {
+                        popupContent += '<br><strong>📊 Total del recorrido:</strong>';
+                        popupContent += '<br>  Distancia total OSRM: ' + (totalDistance/1000).toFixed(2) + ' km';
+                        popupContent += '<br>  Duración total OSRM: ' + (totalDuration/60).toFixed(2) + ' min';
+                    }
+                    
+                    if (currentCoords.originalLat && currentCoords.originalLng) {
+                        popupContent += '<br><small style="color:gray;">Original: ' + 
+                                      currentCoords.originalLat.toFixed(6) + ', ' + 
+                                      currentCoords.originalLng.toFixed(6) + '</small>';
+                    }
+                    
+                    customMarker.bindPopup(popupContent);
 
-            customMarker.setIcon(L.divIcon({
-                className: 'custom-marker',
-                iconSize: markerSize,
-                iconAnchor: [markerSize[0] / 2, markerSize[1] / 2],
-                html: '<div style="width: ' + markerSize[0] + 'px; height: ' + markerSize[1] + 'px; background-color: ' + markerColor + '; border-radius: 50%; border: ' + borderSize +'px solid ' + borderColor + '; cursor: default;"></div>'
-            }));
+                    customMarker.setIcon(L.divIcon({
+                        className: 'custom-marker',
+                        iconSize: markerSize,
+                        iconAnchor: [markerSize[0] / 2, markerSize[1] / 2],
+                        html: '<div style="width: ' + markerSize[0] + 'px; height: ' + markerSize[1] + 'px; background-color: ' + markerColor + '; border-radius: 50%; border: ' + borderSize +'px solid ' + borderColor + '; cursor: default;"></div>'
+                    }));
 
-            previousMarkers.push(customMarker);
-        }
+                    previousMarkers.push(customMarker);
+                }
+                
+                // Ajustar mapa para mostrar todos los puntos
+                if (adjustedCoordinates.length > 0) {
+                    let bounds = L.latLngBounds(adjustedCoordinates.map(c => [c.latitud, c.longitud]));
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                }
+            });
+        });
     }
 
     function toggleLayerVisibility() {
@@ -325,8 +455,14 @@
         clearAllLayersExceptBase();
         clearPreviousMarkersAndPolyline();
         clearRoutingControls();
+        plotAreas(areas);
 
-        if (coordenadas.length === 0) {
+        if (!coordenadas || coordenadas.length === 0) {
+            console.warn("No hay coordenadas para animar");
+            return;
+        }
+
+        if (coordenadas.length === 1) {
             // Solo hay una coordenada, dibujar el marcador para esa coordenada
             let currentCoords = coordenadas[0];
             let markerColor = 'green';
@@ -347,145 +483,162 @@
             }));
 
             markers.push(customMarker);
-
-            plotAreas(areas);
             return;
         }
 
-        let routingPoints = coordenadas.map(function (coord) {
-            return L.latLng(coord.latitud, coord.longitud);
-        });
+        // Primero ajustar los puntos GPS a la red vial usando OSRM /nearest
+        console.log("Ajustando puntos GPS a la red vial para animación...");
+        adjustPointsToRoad(coordenadas, function(adjustedCoordinates) {
+            console.log(`Puntos ajustados: ${adjustedCoordinates.length}`);
+            
+            // Obtener la ruta completa siguiendo calles usando OSRM
+            console.log("Obteniendo ruta OSRM para animación...");
+            getRouteFromOSRM(adjustedCoordinates, function(routeData) {
+                let fullRoute = routeData && routeData.route ? routeData.route : null;
+                let totalDistance = routeData ? routeData.distance : 0;
+                let totalDuration = routeData ? routeData.duration : 0;
+                let legs = routeData && routeData.legs ? routeData.legs : [];
+                
+                if (!fullRoute || fullRoute.length === 0) {
+                    console.warn("OSRM falló, usando línea directa para animación");
+                    fullRoute = adjustedCoordinates.map(c => [c.latitud, c.longitud]);
+                }
 
-        let index = 0;
-        animationInterval = setInterval(function () {
-            if (index < coordenadas.length - 1) {
-                let startPoint = routingPoints[index];
-                let endPoint = routingPoints[index + 1];
-
-                let routingControl = L.Routing.control({
-                    waypoints: [startPoint, endPoint],
-                    routeWhileDragging: false,
-                    show: false,
-                    addWaypoints: false,
-                    draggableWaypoints: false,
-                    fitSelectedRoutes: false,
-                    serviceUrl: `http://${IP}:${PORT}/route/v1`,
-                    lineOptions: {
-                        styles: [{ color: COLOR }]
-                    },
-                    createMarker: function () { return null; },
-                    match: true
-                }).addTo(map);
-
-                routingControls.push(routingControl);
-
-                // Graficar punto actual
-                let currentCoords = coordenadas[index];
-                let nextCoords = coordenadas[index + 1];
-                let markerColor = COLOR;
-                let borderColor = BORDER_COLOR;
-                let borderSize = BORDER_SIZE;
-
-                if (index > 0) {
-                    let horaActual = new Date(currentCoords.fecha + 'T' + currentCoords.hora);
-                    let horaAnterior = new Date(coordenadas[index - 1].fecha + 'T' + coordenadas[index - 1].hora);
-                    let diferenciaMinutos = (horaActual - horaAnterior) / (1000 * 60);
-
-                    if (diferenciaMinutos > 40) {
-                        markerColor = 'red';
+                console.log(`Animando con ${fullRoute.length} puntos de ruta OSRM`);
+                console.log(`Distancia total: ${(totalDistance/1000).toFixed(2)} km, Duración: ${(totalDuration/60).toFixed(2)} min`);
+                console.log(`Legs individuales: ${legs.length}`);
+                
+                // Mapear cada punto GPS ajustado a su índice más cercano en la ruta OSRM
+                let gpsToRouteMapping = [];
+                for (let i = 0; i < adjustedCoordinates.length; i++) {
+                    let gpsLat = adjustedCoordinates[i].latitud;
+                    let gpsLng = adjustedCoordinates[i].longitud;
+                
+                // Buscar el punto más cercano en la ruta OSRM
+                let minDist = Infinity;
+                let closestIndex = 0;
+                
+                for (let j = 0; j < fullRoute.length; j++) {
+                    let dist = Math.pow(fullRoute[j][0] - gpsLat, 2) + Math.pow(fullRoute[j][1] - gpsLng, 2);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        closestIndex = j;
                     }
                 }
-                let markerSize = [8, 8];
-
-                if (index == 0) {
-                    markerColor = 'green';
-                    borderSize = 3;
-                }
-
-                if (index == coordenadas.length - 1) {
-                    markerColor = 'green';
-                    borderColor = 'black';
-                    borderSize = 3;
-                }
-
-                if (markerColor == 'green') {
-                    markerSize = [16, 16];
-                }
-                if (markerColor == 'red') {
-                    markerSize = [16, 16];
-                    borderSize = 3;
-                }
-
-                let customMarker = createCustomMarker([currentCoords.latitud, currentCoords.longitud], markerColor);
-                customMarker.addTo(map);
-                customMarker.setZIndexOffset(999);
-                customMarker.bindPopup('Coordenada ' + (index + 1) + '<br>' + 'Fecha: ' + currentCoords.fecha + ' | ' + currentCoords.hora + '<br>' + 'Velocidad: ' + currentCoords.velocidad + ' Km/h' + ' | ' + 'Distancia: ' + currentCoords.distancia + ' m');
-
-                customMarker.setIcon(L.divIcon({
-                    className: 'custom-marker',
-                    iconSize: markerSize,
-                    iconAnchor: [markerSize[0] / 2, markerSize[1] / 2],
-                    html: '<div style="width: ' + markerSize[0] + 'px; height: ' + markerSize[1] + 'px; background-color: ' + markerColor + '; border-radius: 50%; border: ' + borderSize + 'px solid ' + borderColor + '; cursor: default;"></div>'
-                }));
-
-                markers.push(customMarker);
-
-                // Graficar siguiente punto
-                markerColor = COLOR;
-                borderColor = BORDER_COLOR;
-                borderSize = BORDER_SIZE;
-
-                if (index + 1 > 0) {
-                    let horaActual = new Date(nextCoords.fecha + 'T' + nextCoords.hora);
-                    let horaAnterior = new Date(coordenadas[index].fecha + 'T' + coordenadas[index].hora);
-                    let diferenciaMinutos = (horaActual - horaAnterior) / (1000 * 60);
-
-                    if (diferenciaMinutos > 40) {
-                        markerColor = 'red';
-                    }
-                }
-                markerSize = [8, 8];
-
-                if (index + 1 == 0) {
-                    markerColor = 'green';
-                    borderSize = 3;
-                }
-
-                if (index + 1 == coordenadas.length - 1) {
-                    markerColor = 'green';
-                    borderColor = 'black';
-                    borderSize = 3;
-                }
-
-                if (markerColor == 'green') {
-                    markerSize = [16, 16];
-                }
-                if (markerColor == 'red') {
-                    markerSize = [16, 16];
-                    borderSize = 3;
-                }
-
-                customMarker = createCustomMarker([nextCoords.latitud, nextCoords.longitud], markerColor);
-                customMarker.addTo(map);
-                customMarker.setZIndexOffset(999);
-                customMarker.bindPopup('Coordenada ' + (index + 2) + '<br>' + 'Fecha: ' + nextCoords.fecha + ' | ' + nextCoords.hora + '<br>' + 'Velocidad: ' + nextCoords.velocidad + ' Km/h' + ' | ' + 'Distancia: ' + nextCoords.distancia + ' m');
-
-                customMarker.setIcon(L.divIcon({
-                    className: 'custom-marker',
-                    iconSize: markerSize,
-                    iconAnchor: [markerSize[0] / 2, markerSize[1] / 2],
-                    html: '<div style="width: ' + markerSize[0] + 'px; height: ' + markerSize[1] + 'px; background-color: ' + markerColor + '; border-radius: 50%; border: ' + borderSize + 'px solid ' + borderColor + '; cursor: default;"></div>'
-                }));
-
-                markers.push(customMarker);
-
-                index++;
-            } else {
-                clearInterval(animationInterval);
+                
+                gpsToRouteMapping.push(closestIndex);
             }
-        }, velocidad);
+            
+            let routeIndex = 0;
+            let currentGpsIndex = 0;
+            
+            animationInterval = setInterval(function () {
+                if (routeIndex < fullRoute.length) {
+                    // Actualizar polyline hasta el punto actual de la ruta
+                    let currentRouteCoords = fullRoute.slice(0, routeIndex + 1);
+                    
+                    if (previousPolyline) {
+                        map.removeLayer(previousPolyline);
+                    }
+                    
+                    if (currentRouteCoords.length > 1) {
+                        previousPolyline = L.polyline(currentRouteCoords, {
+                            color: 'green',
+                            weight: 3,
+                            opacity: 0.8,
+                            lineJoin: 'round'
+                        }).addTo(map);
+                    }
 
-        plotAreas(areas);
+                    // Centrar el mapa en la posición actual
+                    let currentPosition = fullRoute[routeIndex];
+                    map.panTo([currentPosition[0], currentPosition[1]], {
+                        animate: true,
+                        duration: velocidad / 1000
+                    });
+                    
+                    // Verificar si debemos mostrar el siguiente punto GPS
+                    if (currentGpsIndex < adjustedCoordinates.length && routeIndex >= gpsToRouteMapping[currentGpsIndex]) {
+                        let currentCoords = adjustedCoordinates[currentGpsIndex];
+                        let markerColor = 'purple';
+                        let borderColor = BORDER_COLOR;
+                        let borderSize = BORDER_SIZE;
+                        let markerSize = [8, 8];
+
+                        // Primer punto (inicio)
+                        if (currentGpsIndex === 0) {
+                            markerColor = 'green';
+                            markerSize = [16, 16];
+                            borderSize = 3;
+                        }
+                        // Último punto (fin)
+                        else if (currentGpsIndex === adjustedCoordinates.length - 1) {
+                            markerColor = 'green';
+                            borderColor = 'black';
+                            markerSize = [16, 16];
+                            borderSize = 3;
+                        }
+                        // Detectar gaps (pausas > 40 min)
+                        else if (currentGpsIndex > 0) {
+                            let horaActual = new Date(currentCoords.fecha + 'T' + currentCoords.hora);
+                            let horaAnterior = new Date(adjustedCoordinates[currentGpsIndex - 1].fecha + 'T' + adjustedCoordinates[currentGpsIndex - 1].hora);
+                            let diferenciaMinutos = (horaActual - horaAnterior) / (1000 * 60);
+
+                            if (diferenciaMinutos > 40) {
+                                markerColor = 'red';
+                                markerSize = [16, 16];
+                                borderSize = 3;
+                            }
+                        }
+
+                        // Crear y mostrar marcador en la posición ajustada a la red vial
+                        let customMarker = createCustomMarker([currentCoords.latitud, currentCoords.longitud], markerColor);
+                        customMarker.addTo(map);
+                        customMarker.setZIndexOffset(999);
+                        
+                        // Popup con datos y coordenadas originales si existen
+                        let popupContent = 'Coordenada ' + (currentGpsIndex + 1) + '<br>' + 
+                                         'Fecha: ' + currentCoords.fecha + ' | ' + currentCoords.hora + '<br>' + 
+                                         'Velociadad: ' + currentCoords.velocidad + ' Km/h' + '|' + 
+                                         'Distancia: ' + currentCoords.distancia + ' m' + '|' + 
+                                         'Velocidad: ' + currentCoords.velocidad + ' Km/h' + '<br>' + 
+                                         'Distancia GPS: ' + currentCoords.distancia + ' m';
+                        
+                        if (currentGpsIndex === 0 && totalDistance > 0) {
+                            popupContent += '<br>Distancia total OSRM: ' + (totalDistance/1000).toFixed(2) + ' km';
+                            popupContent += '<br>Duración OSRM: ' + (totalDuration/60).toFixed(2) + ' min';
+                        }
+                        
+                        if (currentCoords.originalLat && currentCoords.originalLng) {
+                            popupContent += '<br><small style="color:gray;">Original: ' + 
+                                          currentCoords.originalLat.toFixed(6) + ', ' + 
+                                          currentCoords.originalLng.toFixed(6) + '</small>';
+                        }
+                        
+                        customMarker.bindPopup(popupContent);
+                        
+                        customMarker.bindPopup(popupContent);
+
+                        customMarker.setIcon(L.divIcon({
+                            className: 'custom-marker',
+                            iconSize: markerSize,
+                            iconAnchor: [markerSize[0] / 2, markerSize[1] / 2],
+                            html: '<div style="width: ' + markerSize[0] + 'px; height: ' + markerSize[1] + 'px; background-color: ' + markerColor + '; border-radius: 50%; border: ' + borderSize + 'px solid ' + borderColor + '; cursor: default;"></div>'
+                        }));
+
+                        markers.push(customMarker);
+                        currentGpsIndex++;
+                    }
+
+                    // Avanzar en la ruta
+                    routeIndex++;
+                } else {
+                    clearInterval(animationInterval);
+                    console.log("Animación completada");
+                }
+            }, velocidad);
+            });
+        });
     }
 
     window.onload = function () {
@@ -581,6 +734,355 @@
             })
         });
     }
+
+    // Función para ajustar puntos GPS a la red vial usando OSRM /nearest
+    function adjustPointsToRoad(coordenadas, callback) {
+        if (!coordenadas || coordenadas.length === 0) {
+            console.warn("adjustPointsToRoad: sin coordenadas para ajustar");
+            callback(coordenadas);
+            return;
+        }
+
+        console.log(`Ajustando ${coordenadas.length} puntos GPS a la red vial...`);
+        
+        let adjustedCoordinates = [];
+        let processedCount = 0;
+        
+        // Procesar cada punto con el servicio /nearest de OSRM
+        coordenadas.forEach((coord, index) => {
+            let url = `http://${OSRM_HOST}:${OSRM_PORT}/nearest/v1/driving/${coord.longitud},${coord.latitud}?number=1`;
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 'Ok' && data.waypoints && data.waypoints.length > 0) {
+                        // Obtener el punto ajustado a la red vial
+                        let snappedPoint = data.waypoints[0];
+                        
+                        // Crear nuevo objeto con coordenadas ajustadas
+                        let adjustedCoord = {
+                            ...coord,  // Copiar todos los datos originales
+                            originalLat: coord.latitud,  // Guardar coordenadas originales
+                            originalLng: coord.longitud,
+                            latitud: snappedPoint.location[1],  // Coordenadas ajustadas a la calle
+                            longitud: snappedPoint.location[0]
+                        };
+                        
+                        adjustedCoordinates[index] = adjustedCoord;
+                        console.log(`Punto ${index + 1} ajustado - Original: [${coord.latitud.toFixed(6)}, ${coord.longitud.toFixed(6)}] -> Ajustado: [${snappedPoint.location[1].toFixed(6)}, ${snappedPoint.location[0].toFixed(6)}]`);
+                    } else {
+                        // Si falla el ajuste, usar coordenadas originales
+                        console.warn(`No se pudo ajustar punto ${index + 1}, usando coordenadas originales`);
+                        adjustedCoordinates[index] = { ...coord };
+                    }
+                })
+                .catch(error => {
+                    console.error(`Error al ajustar punto ${index + 1}:`, error);
+                    // En caso de error, usar coordenadas originales
+                    adjustedCoordinates[index] = { ...coord };
+                })
+                .finally(() => {
+                    processedCount++;
+                    
+                    // Cuando todos los puntos estén procesados, llamar al callback
+                    if (processedCount === coordenadas.length) {
+                        console.log(`Ajuste completado: ${adjustedCoordinates.length} puntos procesados`);
+                        callback(adjustedCoordinates);
+                    }
+                });
+        });
+    }
+
+    // Función para obtener ruta desde OSRM con división en segmentos
+    function getRouteFromOSRM(coordenadas, callback) {
+        if (!coordenadas || coordenadas.length < 2) {
+            console.warn("getRouteFromOSRM: menos de 2 coordenadas recibidas");
+            callback(null);
+            return;
+        }
+
+        // Debug: mostrar muestra de coordenadas
+        console.log("Muestra de coordenadas (primeras 5):", coordenadas.slice(0, 5).map(c => ({
+            lat: c.latitud, 
+            lng: c.longitud,
+            fecha: c.fecha,
+            hora: c.hora
+        })));
+
+        // DIVIDIR en sub-trayectos cuando hay gaps grandes (>5 minutos)
+        let subTrajectories = [];
+        let currentTrajectory = [coordenadas[0]];
+        
+        for (let i = 1; i < coordenadas.length; i++) {
+            let prev = coordenadas[i - 1];
+            let curr = coordenadas[i];
+            
+            // Calcular diferencia de tiempo en minutos
+            let timeDiff = Math.abs(new Date(curr.fecha_hora) - new Date(prev.fecha_hora)) / 1000 / 60;
+            
+            if (timeDiff > 15) {
+                // Gap grande detectado: guardar trayecto actual y empezar uno nuevo
+                console.warn(`⚠️ Gap de ${timeDiff.toFixed(1)} minutos - Dividiendo trayecto (${currentTrajectory.length} coords)`);
+                if (currentTrajectory.length >= 2) {
+                    subTrajectories.push(currentTrajectory);
+                }
+                currentTrajectory = [curr];
+            } else {
+                // Punto normal: agregar al trayecto actual
+                currentTrajectory.push(curr);
+            }
+        }
+        
+        // Agregar el último trayecto
+        if (currentTrajectory.length >= 2) {
+            subTrajectories.push(currentTrajectory);
+        }
+        
+        console.log(`Dividido en ${subTrajectories.length} sub-trayectos por gaps de tiempo`);
+        
+        // Procesar cada sub-trayecto y combinar todas las rutas
+        let allRoutes = [];
+        let processedCount = 0;
+        
+        let totalDistance = 0;
+        let totalDuration = 0;
+        
+        let allLegs = [];
+        
+        function processNextTrajectory() {
+            if (processedCount >= subTrajectories.length) {
+                // Todos los sub-trayectos procesados
+                console.log(`Todas las rutas procesadas: ${allRoutes.length} puntos totales`);
+                console.log(`Distancia total acumulada: ${(totalDistance/1000).toFixed(2)} km`);
+                callback({
+                    route: allRoutes,
+                    distance: totalDistance,
+                    duration: totalDuration,
+                    legs: allLegs  // Todos los legs acumulados
+                });
+                return;
+            }
+            
+            let trajectory = subTrajectories[processedCount];
+            console.log(`Procesando sub-trayecto ${processedCount + 1}/${subTrajectories.length} (${trajectory.length} coords)`);
+            
+            // Filtrar duplicados EXACTOS en este sub-trayecto
+            let filteredCoords = [trajectory[0]];
+            for (let i = 1; i < trajectory.length; i++) {
+                let prev = filteredCoords[filteredCoords.length - 1];
+                let curr = trajectory[i];
+                if (prev.latitud !== curr.latitud || prev.longitud !== curr.longitud) {
+                    filteredCoords.push(curr);
+                }
+            }
+            
+            if (filteredCoords.length < 2) {
+                processedCount++;
+                processNextTrajectory();
+                return;
+            }
+            
+            // Procesar este sub-trayecto con segmentación OSRM
+            processSingleTrajectory(filteredCoords, function(routeData) {
+                if (routeData && routeData.route && routeData.route.length > 0) {
+                    allRoutes = allRoutes.concat(routeData.route);
+                    totalDistance += routeData.distance || 0;
+                    totalDuration += routeData.duration || 0;
+                    if (routeData.legs && routeData.legs.length > 0) {
+                        allLegs = allLegs.concat(routeData.legs);
+                    }
+                }
+                processedCount++;
+                processNextTrajectory();
+            });
+        }
+        
+        processNextTrajectory();
+    }
+    
+    // Nueva función: procesar un solo trayecto continuo (sin gaps)
+    function processSingleTrajectory(coordenadas, callback) {
+        const MAX_COORDS_PER_REQUEST = 15;  // Segmentos pequeños para máximo éxito OSRM
+        const MIN_DISTANCE_FOR_OSRM = 20;   // Mínimo 20 metros para usar OSRM
+        
+        console.log(`Procesando ${coordenadas.length} coordenadas en segmentos de ${MAX_COORDS_PER_REQUEST}`);
+        
+        // Función auxiliar para calcular distancia entre dos puntos GPS (Haversine simplificado)
+        function calcularDistancia(lat1, lon1, lat2, lon2) {
+            const R = 6371000; // Radio de la Tierra en metros
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+        
+        // Detectar si un segmento está en zona sin caminos (puntos muy cercanos = vehículo detenido)
+        function esZonaSinCaminos(coords) {
+            if (coords.length < 2) return false;
+            
+            let distanciaTotal = 0;
+            for (let i = 1; i < coords.length; i++) {
+                distanciaTotal += calcularDistancia(
+                    coords[i-1].latitud, coords[i-1].longitud,
+                    coords[i].latitud, coords[i].longitud
+                );
+            }
+            
+            let distanciaPromedio = distanciaTotal / (coords.length - 1);
+            
+            // Si el promedio es menor a 20m por punto, probablemente está detenido/estacionamiento
+            return distanciaPromedio < MIN_DISTANCE_FOR_OSRM;
+        }
+        
+        // Si hay pocas coordenadas, verificar si usar OSRM o línea directa
+        if (coordenadas.length <= MAX_COORDS_PER_REQUEST) {
+            if (esZonaSinCaminos(coordenadas)) {
+                console.log("Zona sin caminos detectada, usando línea directa");
+                callback({
+                    route: coordenadas.map(c => [c.latitud, c.longitud]),
+                    distance: 0,
+                    duration: 0,
+                    legs: []
+                });
+            } else {
+                fetchSingleRoute(coordenadas, callback);
+            }
+            return;
+        }
+
+        // Dividir en segmentos con solapamiento
+        let allRouteCoordinates = [];
+        let segments = [];
+        
+        for (let i = 0; i < coordenadas.length; i += MAX_COORDS_PER_REQUEST - 1) {
+            let end = Math.min(i + MAX_COORDS_PER_REQUEST, coordenadas.length);
+            segments.push(coordenadas.slice(i, end));
+        }
+
+        console.log(`Procesando ${segments.length} segmentos`);
+        
+        // Procesar segmentos secuencialmente
+        let currentSegment = 0;
+        let accumulatedDistance = 0;
+        let accumulatedDuration = 0;
+        let accumulatedLegs = [];
+        
+        function processNextSegment() {
+            if (currentSegment >= segments.length) {
+                console.log(`Ruta completa: ${allRouteCoordinates.length} puntos`);
+                callback({
+                    route: allRouteCoordinates,
+                    distance: accumulatedDistance,
+                    duration: accumulatedDuration,
+                    legs: accumulatedLegs
+                });
+                return;
+            }
+
+            fetchSingleRoute(segments[currentSegment], function(routeData) {
+                let route = routeData ? routeData.route : null;
+                let segmentDistance = routeData ? routeData.distance : 0;
+                let segmentDuration = routeData ? routeData.duration : 0;
+                let segmentLegs = routeData && routeData.legs ? routeData.legs : [];
+                
+                // Verificar si el segmento actual está en zona sin caminos
+                if (esZonaSinCaminos(segments[currentSegment])) {
+                    console.log(`Segmento ${currentSegment}: zona sin caminos, usando línea directa`);
+                    route = segments[currentSegment].map(c => [c.latitud, c.longitud]);
+                    segmentDistance = 0;
+                    segmentDuration = 0;
+                    segmentLegs = [];
+                }
+                
+                if (route && route.length > 0) {
+                    // Evitar duplicar el último punto del segmento anterior
+                    if (currentSegment > 0 && allRouteCoordinates.length > 0) {
+                        route = route.slice(1);
+                    }
+                    allRouteCoordinates = allRouteCoordinates.concat(route);
+                    accumulatedDistance += segmentDistance;
+                    accumulatedDuration += segmentDuration;
+                    if (segmentLegs.length > 0) {
+                        accumulatedLegs = accumulatedLegs.concat(segmentLegs);
+                    }
+                    currentSegment++;
+                    processNextSegment();
+                } else {
+                    // Si OSRM falló, usar línea recta directa entre los puntos del segmento
+                    console.warn(`Segmento ${currentSegment} falló, usando línea directa`);
+                    let directRoute = segments[currentSegment].map(c => [c.latitud, c.longitud]);
+                    if (currentSegment > 0 && allRouteCoordinates.length > 0) {
+                        directRoute = directRoute.slice(1);
+                    }
+                    allRouteCoordinates = allRouteCoordinates.concat(directRoute);
+                    currentSegment++;
+                    processNextSegment();
+                }
+            });
+        }
+
+        processNextSegment();
+    }
+
+    function fetchSingleRoute(coordenadas, callback) {
+        let coordinates = coordenadas.map(function(coord) {
+            return coord.longitud + ',' + coord.latitud;
+        }).join(';');
+
+        // IMPORTANTE: Agregar radiuses para permitir snap a calles cercanas (100 metros por punto)
+        let radiuses = coordenadas.map(() => '100').join(';');  // 100 metros de búsqueda por punto
+
+        let osrmUrl = `http://${OSRM_HOST}:${OSRM_PORT}/route/v1/driving/${coordinates}?overview=full&geometries=geojson&radiuses=${radiuses}&continue_straight=false`;
+        
+        console.log(`Solicitando OSRM con ${coordenadas.length} puntos (snap 100m a calles)`);
+
+        fetch(osrmUrl)
+            .then(response => {
+                if (!response.ok) {
+                    console.warn(`OSRM error ${response.status} - retornando null para usar línea directa`);
+                    // Retornar null para que el caller maneje el fallback
+                    callback(null);
+                    return null;
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data) return; // Ya manejado en el error anterior
+                
+                if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+                    let route = data.routes[0];
+                    let geometria = route.geometry;
+                    let distance = route.distance || 0;  // Distancia total en metros
+                    let duration = route.duration || 0;  // Duración total en segundos
+                    let legs = route.legs || [];  // Legs individuales entre cada par de puntos
+                    
+                    console.log(`Segmento OSRM: ${(distance/1000).toFixed(2)} km, ${(duration/60).toFixed(2)} min, ${legs.length} legs`);
+                    
+                    let routeCoordinates = [];
+                    if (geometria.type === 'LineString') {
+                        routeCoordinates = geometria.coordinates.map(coord => [coord[1], coord[0]]);
+                    }
+                    
+                    callback({
+                        route: routeCoordinates,
+                        distance: distance,
+                        duration: duration,
+                        legs: legs  // Array de legs, cada uno con distance y duration
+                    });
+                } else {
+                    console.warn("OSRM retornó código:", data.code);
+                    callback(null);
+                }
+            })
+            .catch(error => {
+                console.error("Error al conectar con OSRM:", error);
+                callback(null);
+            });
+    }
+
 </script>
 
 {% endblock %}

@@ -63,6 +63,22 @@ def menu_datos():
     else:
         return redirect(url_for('auth.login'))
 
+@main.route('/borrar_coordenadas_vehiculo', methods=['POST'])
+def borrar_coordenadas_vehiculo():
+    if 'username' in session:
+        try:
+            # Eliminar todas las coordenadas de vehículos
+            num_deleted = db.session.query(CoordenadasVehiculo).delete()
+            db.session.commit()
+            print(f"✅ Se eliminaron {num_deleted} registros de coordenadas_vehiculo")
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ Error al eliminar coordenadas: {e}")
+        
+        return redirect(url_for('main.menu_datos'))
+    else:
+        return redirect(url_for('auth.login'))
+
 @main.route('/carga_masiva_coordenadas_vehiculo', methods=['GET', 'POST'])
 def carga_masiva_coordenadas_vehiculo():
     if 'username' in session:
@@ -70,18 +86,39 @@ def carga_masiva_coordenadas_vehiculo():
             archivo_excel = request.files['archivo_excel']
 
             if archivo_excel and archivo_excel.filename.endswith(('.xlsx', '.xls')):
-                df = pd.read_excel(archivo_excel, header=None)
-
-                for i, row in df.iterrows():
-                    if 'Longitud' in row.values and 'Latitud' in row.values:
-                        df.columns = row
-                        df = df[i+1:]
-                        break
-
-                if 'Longitud' not in df.columns or 'Latitud' not in df.columns:
-                    return "No se encontraron las columnas 'Longitud' y 'Latitud' en el archivo Excel.", 400
-
-                df = df.dropna(subset=['Longitud', 'Latitud'])
+                # Leer el archivo con la primera fila como encabezado
+                df = pd.read_excel(archivo_excel, header=0)
+                
+                # Normalizar nombres de columnas: convertir a mayúsculas y eliminar espacios
+                columnas_normalizadas = {str(col).strip().upper(): col for col in df.columns}
+                
+                # Buscar las columnas de longitud y latitud (pueden tener sufijos como [O], [S], etc.)
+                col_longitud = None
+                col_latitud = None
+                es_utm = False
+                
+                # Primero buscar columnas de grados (sin UTM en el nombre)
+                for col_norm, col_original in columnas_normalizadas.items():
+                    if 'LONGITUD' in col_norm and 'UTM' not in col_norm:
+                        col_longitud = col_original
+                    if 'LATITUD' in col_norm and 'UTM' not in col_norm:
+                        col_latitud = col_original
+                
+                # Si no encontró columnas de grados, buscar UTM
+                if col_longitud is None or col_latitud is None:
+                    for col_norm, col_original in columnas_normalizadas.items():
+                        if 'LONGITUD' in col_norm and 'UTM' in col_norm:
+                            col_longitud = col_original
+                            es_utm = True
+                        if 'LATITUD' in col_norm and 'UTM' in col_norm:
+                            col_latitud = col_original
+                            es_utm = True
+                
+                if col_longitud is None or col_latitud is None:
+                    columnas_detectadas = list(df.columns)
+                    return f"No se encontraron las columnas 'Longitud' y 'Latitud' en el archivo Excel. Columnas detectadas: {', '.join(str(c) for c in columnas_detectadas)}", 400
+                
+                df = df.dropna(subset=[col_longitud, col_latitud])
 
                 try:
                     coordenadas_vehiculo = []
@@ -90,51 +127,93 @@ def carga_masiva_coordenadas_vehiculo():
                     pendiente_anterior = 0
 
                     for index, row in df.iterrows():
-                        vehiculo = db.session.query(Vehiculo).filter_by(gps=row['IMEI']).first()
-                        areas = Area.query.filter(Area.id_dpto_empresa == vehiculo.id_dpto_empresa).all()
+                        try:
+                            # Validar que exista la columna IMEI
+                            if 'IMEI' not in df.columns:
+                                return "No se encontró la columna 'IMEI' en el archivo Excel.", 400
+                            
+                            imei_valor = str(row['IMEI']).strip()
+                            
+                            # Buscar el vehículo por IMEI (gps)
+                            vehiculo = db.session.query(Vehiculo).filter_by(gps=imei_valor).first()
+                            
+                            # Si no existe, crear uno automáticamente
+                            if not vehiculo:
+                                # Obtener nombre del vehículo de la columna si existe
+                                nombre_vehiculo = "Vehículo " + imei_valor if 'Vehiculo' not in df.columns else str(row.get('Vehiculo', imei_valor))
+                                
+                                vehiculo = Vehiculo(
+                                    patente=nombre_vehiculo[:12],  # Limitar a 12 caracteres
+                                    gps=imei_valor,
+                                    estado='Activo',
+                                    id_dpto_empresa=1  # Usar departamento por defecto
+                                )
+                                db.session.add(vehiculo)
+                                db.session.flush()  # Obtener el ID generado sin hacer commit
+                            
+                            areas = Area.query.filter(Area.id_dpto_empresa == vehiculo.id_dpto_empresa).all()
 
-                        fecha_valor = row['Fecha']
+                            fecha_valor = row['Fecha']
 
-                        if isinstance(fecha_valor, datetime):
-                            fecha_formateada = fecha_valor.strftime('%Y-%m-%d')
-                        else:
-                            fecha_str = str(fecha_valor).strip()
+                            if isinstance(fecha_valor, datetime):
+                                fecha_formateada = fecha_valor.strftime('%Y-%m-%d')
+                            else:
+                                fecha_str = str(fecha_valor).strip()
+                                try:
+                                    fecha_obj = datetime.strptime(fecha_str, '%d-%m-%Y')
+                                except ValueError:
+                                    return f"Formato de fecha no reconocido en fila {index + 1}: {fecha_str}. Use formato DD-MM-YYYY", 400
+
+                                fecha_formateada = fecha_obj.strftime('%Y-%m-%d')
+
+                            longitud, latitud = row[col_longitud], row[col_latitud]
+                            
+                            # Convertir a float y validar que sean números válidos
                             try:
-                                fecha_obj = datetime.strptime(fecha_str, '%d-%m-%Y')
-                            except ValueError:
-                                return f"Formato de fecha no reconocido: {fecha_str}", 400
+                                longitud = float(longitud)
+                                latitud = float(latitud)
+                            except (ValueError, TypeError):
+                                return f"Valores de coordenadas inválidos en fila {index + 1}: Longitud={longitud}, Latitud={latitud}. Deben ser números.", 400
+                            
+                            # Si son coordenadas en grados, validar rango
+                            if not es_utm:
+                                if not (-180 <= longitud <= 180) or not (-90 <= latitud <= 90):
+                                    return f"Coordenadas fuera de rango en fila {index + 1}: Longitud={longitud}, Latitud={latitud}. Deben estar en rangos válidos (-180 a 180 para Longitud, -90 a 90 para Latitud).", 400
+                                utm_longitud, utm_latitud = transformador.transform(longitud, latitud)
+                            else:
+                                # Si ya son UTM, usarlas directamente
+                                utm_longitud, utm_latitud = longitud, latitud
 
-                            fecha_formateada = fecha_obj.strftime('%Y-%m-%d')
-
-                        longitud, latitud = row['Longitud'], row['Latitud']
-                        utm_longitud, utm_latitud = transformador.transform(longitud, latitud)
-
-                        existing_coordinate = CoordenadasVehiculo.query.filter_by(
-                            id_vehiculo=vehiculo.id_vehiculo,
-                            fecha=fecha_formateada,
-                            hora=row['Hora'],
-                            longitud=utm_longitud,
-                            latitud=utm_latitud,
-                            grados_longitud=longitud,
-                            grados_latitud=latitud,
-                        ).first()
-
-                        if not existing_coordinate:
-
-                            nueva_coordenada_vehiculo = CoordenadasVehiculo(
-                                latitud=utm_latitud,
-                                longitud=utm_longitud,
-                                grados_latitud=row['Latitud'],
-                                grados_longitud=row['Longitud'],
+                            existing_coordinate = CoordenadasVehiculo.query.filter_by(
+                                id_vehiculo=vehiculo.id_vehiculo,
                                 fecha=fecha_formateada,
                                 hora=row['Hora'],
-                                vehiculo=vehiculo,
-                                estado=1,
-                                distancia_r=0,
-                                distancia_m=0,
-                            )
-                            db.session.add(nueva_coordenada_vehiculo)
-                            coordenadas_vehiculo.append(nueva_coordenada_vehiculo)
+                                longitud=utm_longitud,
+                                latitud=utm_latitud,
+                                grados_longitud=longitud,
+                                grados_latitud=latitud,
+                            ).first()
+
+                            if not existing_coordinate:
+
+                                nueva_coordenada_vehiculo = CoordenadasVehiculo(
+                                    latitud=utm_latitud,
+                                    longitud=utm_longitud,
+                                    grados_latitud=row[col_latitud],
+                                    grados_longitud=row[col_longitud],
+                                    fecha=fecha_formateada,
+                                    hora=row['Hora'],
+                                    vehiculo=vehiculo,
+                                    estado=1,
+                                    distancia_r=0,
+                                    distancia_m=0,
+                                )
+                                db.session.add(nueva_coordenada_vehiculo)
+                                coordenadas_vehiculo.append(nueva_coordenada_vehiculo)
+                        except KeyError as e:
+                            return f"Columna faltante en fila {index + 1}: {str(e)}", 400
+                        except Exception as e:
+                            return f"Error al procesar fila {index + 1}: {str(e)}", 400
 
                     for i in range(len(coordenadas_vehiculo)):
                         coord_curr = coordenadas_vehiculo[i]
@@ -214,11 +293,17 @@ def carga_masiva_coordenadas_vehiculo():
                     db.session.commit()
                     return redirect(url_for('main.menu_vehiculo'))
                 except IntegrityError as e:
+                    db.session.rollback()
                     print(f"Error de integridad: {e}")
-                    return 'Error al guardar las coordenadas del vehículo en la base de datos.', 500
+                    import traceback
+                    traceback.print_exc()
+                    return f'Error de integridad en la base de datos: {str(e)}', 500
                 except Exception as e:
+                    db.session.rollback()
                     print(f"Error desconocido: {e}")
-                    return 'Error al procesar el archivo Excel.', 500
+                    import traceback
+                    traceback.print_exc()
+                    return f'Error al procesar el archivo Excel: {str(e)}', 500
         else:
             return render_template('cargas/carga_masiva_coord_vehiculo.html')
     else:
@@ -348,8 +433,17 @@ def ver_trayecto(id_vehiculo):
         usuario = Usuario.query.filter_by(username=username).first()
         departamento_usuario = usuario.personal.cargo.dpto_empresa.id_dpto_empresa
 
+        # Validar que el vehículo existe
         vehiculo = Vehiculo.query.get(id_vehiculo)
+        if not vehiculo:
+            return render_template('ver_trayecto.html', vehiculo=None, coordenadas_vehiculo=[], fechas_disponibles=[], areas=[], error="Vehículo no encontrado")
+        
+        # Obtener solo coordenadas válidas (estado=1)
         coordenadas_vehiculo = CoordenadasVehiculo.query.filter_by(id_vehiculo=id_vehiculo, estado=1).order_by(CoordenadasVehiculo.fecha.desc(), CoordenadasVehiculo.hora).all()
+        
+        # Si no hay coordenadas en absoluto, retornar aviso
+        if not coordenadas_vehiculo:
+            return render_template('ver_trayecto.html', vehiculo=vehiculo, coordenadas_vehiculo=[], fechas_disponibles=[], areas=[], error="No hay coordenadas disponibles para este vehículo")
         
         coordenadas_json = []
         fechas_con_coordenadas = set()
@@ -371,8 +465,8 @@ def ver_trayecto(id_vehiculo):
 
                 if fecha_anterior != coordenadas_vehiculo[j].fecha:
                     coordenadas_json.append({
-                        'latitud': coordenadas_vehiculo[j].grados_latitud,
-                        'longitud': coordenadas_vehiculo[j].grados_longitud,
+                        'latitud': float(coordenadas_vehiculo[j].grados_latitud),
+                        'longitud': float(coordenadas_vehiculo[j].grados_longitud),
                         'fecha': coordenadas_vehiculo[j].fecha.strftime('%Y-%m-%d'),
                         'hora': coordenadas_vehiculo[j].hora.strftime('%H:%M:%S'),
                         'velocidad': round(velocidad_kilometros) if velocidad_kilometros is not None else None,
@@ -381,8 +475,8 @@ def ver_trayecto(id_vehiculo):
                     })
                 else:
                     coordenadas_json.append({
-                        'latitud': coordenadas_vehiculo[j].grados_latitud,
-                        'longitud': coordenadas_vehiculo[j].grados_longitud,
+                        'latitud': float(coordenadas_vehiculo[j].grados_latitud),
+                        'longitud': float(coordenadas_vehiculo[j].grados_longitud),
                         'fecha': coordenadas_vehiculo[j].fecha.strftime('%Y-%m-%d'),
                         'hora': coordenadas_vehiculo[j].hora.strftime('%H:%M:%S'),
                         'velocidad': round(velocidad_kilometros) if velocidad_kilometros is not None else None,
@@ -403,8 +497,8 @@ def ver_trayecto(id_vehiculo):
             area_coords = []
             for coord in area.coordenadas:
                 area_coords.append({
-                    'latitud': coord.grados_latitud,
-                    'longitud': coord.grados_longitud,
+                    'latitud': float(coord.grados_latitud),
+                    'longitud': float(coord.grados_longitud),
                     'nombre_area': area.nombre_area,
                     'tipo_area': area.tipo_area
                 })

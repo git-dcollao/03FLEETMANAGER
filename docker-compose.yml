@@ -18,6 +18,22 @@ services:
       retries: 10
       interval: 10s
 
+  # Servicio OSRM (Open Source Routing Machine) para enrutamiento OSM
+  osrm:
+    image: osrm/osrm-backend:latest
+    container_name: fleet_manager_osrm
+    volumes:
+      - ./osrm-data:/data
+    ports:
+      - "5555:5000"
+    networks:
+      - fleet_network
+    command: osrm-routed --algorithm mld /data/chile-latest.osrm
+    depends_on:
+      - db
+    environment:
+      - OSRM_DATA_PATH=/data
+
   # Servicio de la aplicación Flask
   app:
     build: .
@@ -29,11 +45,15 @@ services:
       DB_HOST: db
       DB_PORT: 3306
       DB_NAME: fleet_manager
+      OSRM_HOST: osrm
+      OSRM_PORT: 5555
     ports:
       - "8080:8080"
     depends_on:
       db:
         condition: service_healthy
+      osrm:
+        condition: service_started
     volumes:
       - ./app:/app/app
       - ./static:/app/static

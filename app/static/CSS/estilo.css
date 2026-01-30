@@ -25,6 +25,16 @@ label {
     box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
 }
 
+/* Contenedor más ancho para tablas */
+.containerForm-wide {
+    max-width: 95%;
+    margin: auto;
+    padding: 20px;
+    background-color: rgba(255, 255, 255, 0.5);
+    border-radius: 10px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+}
+
 .form-control {
     border-radius: 5px;
 }
@@ -219,4 +229,63 @@ label {
 .form-check-input {
     margin-right: 5px;
     /* Ajusta el espacio entre el checkbox y el label */
+}
+
+/* Estilos para tabla de vehículos */
+.table-responsive {
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+.table thead.table-dark {
+    background-color: rgba(52, 58, 64, 0.95) !important;
+    font-weight: 600;
+}
+
+.table tbody tr {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    transition: background-color 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.table td {
+    vertical-align: middle;
+    padding: 12px;
+}
+
+.table .btn-sm {
+    margin: 0 2px;
+    padding: 0.35rem 0.55rem;
+    font-size: 0.85rem;
+    box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+.table .btn-sm:hover {
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+}
+
+/* Estilos para botones en tabla */
+.btn-group-table {
+    display: flex;
+    gap: 5px;
+}
+
+.btn-group-table .btn-sm {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.btn-group-table .btn-sm i {
+    margin-right: 3px;
 }

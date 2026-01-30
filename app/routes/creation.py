@@ -599,12 +599,13 @@ def crear_vehiculo():
             db.session.add(nuevo_vehiculo)
             db.session.commit()
 
-            return redirect(url_for('crud.lista_vehiculo'))
+            return redirect(url_for('creation.crear_vehiculo'))
         tipo_vehiculo = TipoVehiculo.query.filter_by(id_dpto_empresa=departamento_usuario).all()
         detalles_tv = DetalleTV.query.filter(DetalleTV.id_dtv.in_([tv.id_tv for tv in tipo_vehiculo])).all()
         flota = Flota.query.filter_by(id_dpto_empresa=departamento_usuario).filter(Flota.id_flota >= 1).all()
+        vehiculos_existentes = Vehiculo.query.filter_by(id_dpto_empresa=departamento_usuario).all()
 
-        return render_template('datos/crear_vehiculo.html', tipo_vehiculo=tipo_vehiculo, flota=flota, detalles_tv=detalles_tv)
+        return render_template('datos/crear_vehiculo.html', tipo_vehiculo=tipo_vehiculo, flota=flota, detalles_tv=detalles_tv, vehiculos_existentes=vehiculos_existentes)
     else:
         return redirect(url_for('auth.login'))
 
