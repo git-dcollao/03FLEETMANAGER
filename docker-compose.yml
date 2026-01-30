@@ -46,7 +46,7 @@ services:
       DB_PORT: 3306
       DB_NAME: fleet_manager
       OSRM_HOST: osrm
-      OSRM_PORT: 5555
+      OSRM_PORT: 5000
     ports:
       - "8080:8080"
     depends_on:

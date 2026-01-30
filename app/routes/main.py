@@ -8,6 +8,11 @@ from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 import tempfile
 import locale
+import os
+
+# Configuración de OSRM para cálculo de rutas
+OSRM_HOST = os.getenv("OSRM_HOST", "localhost")
+OSRM_PORT = os.getenv("OSRM_PORT", "5555")
 
 main = Blueprint('main', __name__)
 
@@ -233,7 +238,9 @@ def carga_masiva_coordenadas_vehiculo():
                             coord_prev_point = (coord_prev.grados_longitud, coord_prev.grados_latitud)
                             coord_curr_point = (coord_curr.grados_longitud, coord_curr.grados_latitud)
 
-                            url = f"http://{IP}:{PORT}/route/v1/driving/{coord_prev_point[0]},{coord_prev_point[1]};{coord_curr_point[0]},{coord_curr_point[1]}?overview=false"
+                            # Usar OSRM para calcular distancia real entre coordenadas
+                            url = f"http://{OSRM_HOST}:{OSRM_PORT}/route/v1/driving/{coord_prev_point[0]},{coord_prev_point[1]};{coord_curr_point[0]},{coord_curr_point[1]}?overview=false"
+                            print(f"\n🔗 URL OSRM: {url}")
                             distancia_r = obtener_distancia_ruta(url)
                             distancia_m = calcular_distancia(coord_prev, coord_curr)
                             pendiente, delta_latitud, delta_longitud = calcular_pendiente(coord_prev, coord_curr)
@@ -262,17 +269,17 @@ def carga_masiva_coordenadas_vehiculo():
                             pendiente_anterior = pendiente
                             if coord_next:
                                 coord_next_point = (coord_next.grados_longitud, coord_next.grados_latitud)
-                                url_r1 = f"http://{IP}:{PORT}/route/v1/driving/{coord_curr_point[0]},{coord_curr_point[1]};{coord_next_point[0]},{coord_next_point[1]}?overview=false"
+                                url_r1 = f"http://{OSRM_HOST}:{OSRM_PORT}/route/v1/driving/{coord_curr_point[0]},{coord_curr_point[1]};{coord_next_point[0]},{coord_next_point[1]}?overview=false"
                                 distancia_r1 = obtener_distancia_ruta(url_r1)
 
                             if coord_subnext:
                                 coord_subnext_point = (coord_subnext.grados_longitud, coord_subnext.grados_latitud)
-                                url_r2 = f"http://{IP}:{PORT}/route/v1/driving/{coord_curr_point[0]},{coord_curr_point[1]};{coord_subnext_point[0]},{coord_subnext_point[1]}?overview=false"
+                                url_r2 = f"http://{OSRM_HOST}:{OSRM_PORT}/route/v1/driving/{coord_curr_point[0]},{coord_curr_point[1]};{coord_subnext_point[0]},{coord_subnext_point[1]}?overview=false"
                                 distancia_r2 = obtener_distancia_ruta(url_r2)
 
                             if coord_subnext2:
                                 coord_subnext2_point = (coord_subnext2.grados_longitud, coord_subnext2.grados_latitud)
-                                url_r3 = f"http://{IP}:{PORT}/route/v1/driving/{coord_curr_point[0]},{coord_curr_point[1]};{coord_subnext2_point[0]},{coord_subnext2_point[1]}?overview=false"
+                                url_r3 = f"http://{OSRM_HOST}:{OSRM_PORT}/route/v1/driving/{coord_curr_point[0]},{coord_curr_point[1]};{coord_subnext2_point[0]},{coord_subnext2_point[1]}?overview=false"
                                 distancia_r3 = obtener_distancia_ruta(url_r3)
 
                             if distancia_r1 and distancia_r2 and distancia_r3:
@@ -282,15 +289,20 @@ def carga_masiva_coordenadas_vehiculo():
                                 if distancia_r2 > distancia_r3:
                                     coord_subnext2.estado = 2
                                     db.session.commit()
-                        print(i)
+                        print(f"📍 Procesando coordenada {i+1}/{len(coordenadas_vehiculo)}")
                         coord_curr.distancia_r = distancia_r
                         coord_curr.distancia_m = distancia_m
+                        
+                        print(f"   Distancia OSRM: {distancia_r} m, Distancia manual: {distancia_m} m")
 
                         if int(distancia_r) > int(distancia_m):
                             coord_curr.estado = 2
                             db.session.commit()
 
+                    # Commit final para guardar todas las distancias calculadas
+                    print(f"\n💾 Guardando {len(coordenadas_vehiculo)} coordenadas en la base de datos...")
                     db.session.commit()
+                    print("✅ Carga masiva completada exitosamente")
                     return redirect(url_for('main.menu_vehiculo'))
                 except IntegrityError as e:
                     db.session.rollback()

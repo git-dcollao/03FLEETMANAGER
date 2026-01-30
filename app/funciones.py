@@ -198,8 +198,26 @@ def coordenada_pertenece_a_areas(coordenada, areas):
     return (tipos_de_area, nombres_de_area) if tipos_de_area else ([], [])
 
 def obtener_distancia_ruta(url):
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        return data['routes'][0].get('distance', 0)
-    return 0
+    try:
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('code') == 'Ok' and 'routes' in data and len(data['routes']) > 0:
+                distance = data['routes'][0].get('distance', 0)
+                print(f"✅ OSRM distancia obtenida: {distance} metros")
+                return distance
+            else:
+                print(f"⚠️ OSRM código: {data.get('code', 'unknown')}")
+                return 0
+        else:
+            print(f"❌ OSRM error HTTP {response.status_code}")
+            return 0
+    except requests.exceptions.Timeout:
+        print("❌ OSRM timeout - servidor no responde")
+        return 0
+    except requests.exceptions.ConnectionError:
+        print("❌ OSRM error de conexión - servidor no disponible")
+        return 0
+    except Exception as e:
+        print(f"❌ OSRM error inesperado: {str(e)}")
+        return 0
