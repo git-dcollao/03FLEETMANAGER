@@ -193,3 +193,22 @@ class Vehiculo(db.Model):
     flota = db.relationship('Flota', backref='vehiculos')
     detalle_tv = db.relationship('DetalleTV', backref='vehiculos')
     coordenadas_vehiculo = db.relationship('CoordenadasVehiculo', backref='vehiculo')
+
+class ApiConfig(db.Model):
+    """Configuración de APIs de proveedores GPS"""
+    __tablename__='api_config'
+    id_api = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    nombre_proveedor = db.Column(db.String(50), nullable=False)  # ej: "LINKSUR", "COSEMAR"
+    tipo_api = db.Column(db.String(20), nullable=False)  # "vehiculos" o "coordenadas"
+    url = db.Column(db.String(500), nullable=False)
+    auth_type = db.Column(db.String(20), nullable=False)  # "token", "api_key", "bearer"
+    auth_value = db.Column(db.String(200), nullable=False)  # Token o API Key
+    header_name = db.Column(db.String(100), nullable=True)  # Nombre del header si aplica
+    activo = db.Column(db.Boolean, default=True, nullable=False)
+    id_dpto_empresa = db.Column(db.Integer, db.ForeignKey('dpto_empresa.id_dpto_empresa'), nullable=False)
+    intervalo_segundos = db.Column(db.Integer, default=10, nullable=False)  # Frecuencia de actualización
+    descripcion = db.Column(db.String(255), nullable=True)
+    fecha_creacion = db.Column(db.TIMESTAMP, server_default=db.func.now())
+    fecha_actualizacion = db.Column(db.TIMESTAMP, server_default=db.func.now(), onupdate=db.func.now())
+    
+    dpto_empresa = db.relationship('DptoEmpresa', backref='apis')

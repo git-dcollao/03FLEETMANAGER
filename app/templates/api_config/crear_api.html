@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<button class="btn btn-success toggler2" onclick="toggleSidebarOpciones()">⚙️</button>
+<div class="sidebar2" id="sidebar2">
+    <button type="button" class="btn-close close-btn2" aria-label="Close" onclick="toggleSidebarOpciones()"></button>
+    <div class="sidebar-content">
+        <h5 class="text-white mb-3">Gestión de APIs</h5>
+        <a href="{{ url_for('api_config.listar_apis') }}" class="btn btn-secondary d-block mb-2">
+            ⬅️ Volver a Lista
+        </a>
+        <a href="{{ url_for('main.menu_datos') }}" class="btn btn-secondary d-block mb-2">
+            🏠 Menú Principal
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block maincontent %}
+<div class="container mt-5">
+    <h2 class="mb-4">➕ Nueva Configuración de API</h2>
+    
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('api_config.crear_api') }}">
+                <div class="row">
+                    <!-- Nombre del Proveedor -->
+                    <div class="col-md-6 mb-3">
+                        <label for="nombre_proveedor" class="form-label">Nombre del Proveedor *</label>
+                        <input type="text" class="form-control" id="nombre_proveedor" 
+                               name="nombre_proveedor" required 
+                               placeholder="ej: LINKSUR, COSEMAR, GPS Tracking">
+                        <small class="text-muted">Identificador único del proveedor GPS</small>
+                    </div>
+                    
+                    <!-- Tipo de API -->
+                    <div class="col-md-6 mb-3">
+                        <label for="tipo_api" class="form-label">Tipo de API *</label>
+                        <select class="form-select" id="tipo_api" name="tipo_api" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="vehiculos">Obtener Vehículos</option>
+                            <option value="coordenadas">Obtener Coordenadas</option>
+                        </select>
+                        <small class="text-muted">Tipo de datos que proporciona esta API</small>
+                    </div>
+                </div>
+                
+                <!-- URL de la API -->
+                <div class="mb-3">
+                    <label for="url" class="form-label">URL de la API *</label>
+                    <input type="text" class="form-control" id="url" name="url" required
+                           placeholder="https://api.example.com/v1/vehiculos">
+                    <small class="text-muted">
+                        Para tokens en URL, usar placeholder: {token}<br>
+                        Ejemplo: https://api.com/obtener_posicion/{token}
+                    </small>
+                </div>
+                
+                <div class="row">
+                    <!-- Tipo de Autenticación -->
+                    <div class="col-md-4 mb-3">
+                        <label for="auth_type" class="form-label">Tipo de Autenticación *</label>
+                        <select class="form-select" id="auth_type" name="auth_type" required 
+                                onchange="toggleAuthFields()">
+                            <option value="">Seleccionar...</option>
+                            <option value="token">Token en URL</option>
+                            <option value="api_key">API Key en Header</option>
+                            <option value="bearer">Bearer Token</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Valor de Autenticación -->
+                    <div class="col-md-4 mb-3">
+                        <label for="auth_value" class="form-label">Token / API Key *</label>
+                        <input type="text" class="form-control" id="auth_value" 
+                               name="auth_value" required
+                               placeholder="Valor del token o API key">
+                    </div>
+                    
+                    <!-- Nombre del Header (opcional) -->
+                    <div class="col-md-4 mb-3" id="header_name_group" style="display:none;">
+                        <label for="header_name" class="form-label">Nombre del Header</label>
+                        <input type="text" class="form-control" id="header_name" 
+                               name="header_name"
+                               placeholder="ej: Authorization-api-key">
+                        <small class="text-muted">Requerido para API Key en Header</small>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <!-- Departamento -->
+                    <div class="col-md-6 mb-3">
+                        <label for="id_dpto_empresa" class="form-label">Departamento/Empresa *</label>
+                        <select class="form-select" id="id_dpto_empresa" name="id_dpto_empresa" required>
+                            <option value="">Seleccionar...</option>
+                            {% for dpto in departamentos %}
+                            <option value="{{ dpto.id_dpto_empresa }}">
+                                {{ dpto.nombre_dpto_empresa }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Intervalo de actualización -->
+                    <div class="col-md-6 mb-3">
+                        <label for="intervalo_segundos" class="form-label">Intervalo de Actualización (segundos)</label>
+                        <input type="number" class="form-control" id="intervalo_segundos" 
+                               name="intervalo_segundos" value="10" min="1">
+                        <small class="text-muted">Frecuencia de consulta a la API</small>
+                    </div>
+                </div>
+                
+                <!-- Descripción -->
+                <div class="mb-3">
+                    <label for="descripcion" class="form-label">Descripción</label>
+                    <textarea class="form-control" id="descripcion" name="descripcion" 
+                              rows="2" placeholder="Notas adicionales sobre esta API"></textarea>
+                </div>
+                
+                <!-- Estado Activo -->
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="activo" 
+                           name="activo" checked>
+                    <label class="form-check-label" for="activo">
+                        Activar API inmediatamente
+                    </label>
+                </div>
+                
+                <hr>
+                
+                <!-- Botones -->
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('api_config.listar_apis') }}" class="btn btn-secondary">
+                        ← Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        💾 Guardar Configuración
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Ejemplos de Configuración -->
+    <div class="card mt-4">
+        <div class="card-header bg-info text-white">
+            <h5>💡 Ejemplos de Configuración</h5>
+        </div>
+        <div class="card-body">
+            <h6>LINKSUR (SmartGPS):</h6>
+            <ul>
+                <li><strong>URL:</strong> https://smartgps.gpsserver.xyz/v3/apis/global_api/v3.0.0/public/index.php/obtener_posicion_actual/{token}</li>
+                <li><strong>Tipo Auth:</strong> Token en URL</li>
+                <li><strong>Token:</strong> e0a9528e7a5f181568f797e7f2d7c355</li>
+            </ul>
+            
+            <h6>COSEMAR (InducomGPS):</h6>
+            <ul>
+                <li><strong>URL:</strong> https://api.inducomgps.com/v1/vehiculos?fields[]=patente</li>
+                <li><strong>Tipo Auth:</strong> API Key en Header</li>
+                <li><strong>Header:</strong> Authorization-api-key</li>
+                <li><strong>API Key:</strong> 71c627fc-8987-46b9-93f8-4d257a2a26fc</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleAuthFields() {
+    const authType = document.getElementById('auth_type').value;
+    const headerGroup = document.getElementById('header_name_group');
+    const headerInput = document.getElementById('header_name');
+    
+    if (authType === 'api_key') {
+        headerGroup.style.display = 'block';
+        headerInput.required = true;
+    } else {
+        headerGroup.style.display = 'none';
+        headerInput.required = false;
+        headerInput.value = '';
+    }
+}
+</script>
+{% endblock %}

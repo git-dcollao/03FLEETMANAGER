@@ -31,12 +31,14 @@ def create_app():
         from .routes.crud import crud
         from .routes.creation import creation
         from .routes.auth import auth
+        from .routes.api_config import api_config
         
         app.register_blueprint(api)
         app.register_blueprint(main)
         app.register_blueprint(crud)
         app.register_blueprint(creation)
         app.register_blueprint(auth)
+        app.register_blueprint(api_config)
 
         db.create_all()
 

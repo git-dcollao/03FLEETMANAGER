@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<button class="btn btn-success toggler2" onclick="toggleSidebarOpciones()">⚙️</button>
+<div class="sidebar2" id="sidebar2">
+    <button type="button" class="btn-close close-btn2" aria-label="Close" onclick="toggleSidebarOpciones()"></button>
+    <div class="sidebar-content">
+        <h5 class="text-white mb-3">Gestión de APIs</h5>
+        <a href="{{ url_for('api_config.listar_apis') }}" class="btn btn-secondary d-block mb-2">
+            ⬅️ Volver a Lista
+        </a>
+        <a href="{{ url_for('main.menu_datos') }}" class="btn btn-secondary d-block mb-2">
+            🏠 Menú Principal
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block maincontent %}
+<div class="container mt-5">
+    <h2 class="mb-4">✏️ Editar Configuración de API</h2>
+    
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('api_config.editar_api', id_api=api.id_api) }}">
+                <div class="row">
+                    <!-- Nombre del Proveedor -->
+                    <div class="col-md-6 mb-3">
+                        <label for="nombre_proveedor" class="form-label">Nombre del Proveedor *</label>
+                        <input type="text" class="form-control" id="nombre_proveedor" 
+                               name="nombre_proveedor" required value="{{ api.nombre_proveedor }}"
+                               placeholder="ej: LINKSUR, COSEMAR, GPS Tracking">
+                    </div>
+                    
+                    <!-- Tipo de API -->
+                    <div class="col-md-6 mb-3">
+                        <label for="tipo_api" class="form-label">Tipo de API *</label>
+                        <select class="form-select" id="tipo_api" name="tipo_api" required>
+                            <option value="vehiculos" {% if api.tipo_api == 'vehiculos' %}selected{% endif %}>
+                                Obtener Vehículos
+                            </option>
+                            <option value="coordenadas" {% if api.tipo_api == 'coordenadas' %}selected{% endif %}>
+                                Obtener Coordenadas
+                            </option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- URL de la API -->
+                <div class="mb-3">
+                    <label for="url" class="form-label">URL de la API *</label>
+                    <input type="text" class="form-control" id="url" name="url" required
+                           value="{{ api.url }}"
+                           placeholder="https://api.example.com/v1/vehiculos">
+                    <small class="text-muted">
+                        Para tokens en URL, usar placeholder: {token}
+                    </small>
+                </div>
+                
+                <div class="row">
+                    <!-- Tipo de Autenticación -->
+                    <div class="col-md-4 mb-3">
+                        <label for="auth_type" class="form-label">Tipo de Autenticación *</label>
+                        <select class="form-select" id="auth_type" name="auth_type" required 
+                                onchange="toggleAuthFields()">
+                            <option value="token" {% if api.auth_type == 'token' %}selected{% endif %}>
+                                Token en URL
+                            </option>
+                            <option value="api_key" {% if api.auth_type == 'api_key' %}selected{% endif %}>
+                                API Key en Header
+                            </option>
+                            <option value="bearer" {% if api.auth_type == 'bearer' %}selected{% endif %}>
+                                Bearer Token
+                            </option>
+                        </select>
+                    </div>
+                    
+                    <!-- Valor de Autenticación -->
+                    <div class="col-md-4 mb-3">
+                        <label for="auth_value" class="form-label">Token / API Key *</label>
+                        <input type="text" class="form-control" id="auth_value" 
+                               name="auth_value" required value="{{ api.auth_value }}"
+                               placeholder="Valor del token o API key">
+                    </div>
+                    
+                    <!-- Nombre del Header (opcional) -->
+                    <div class="col-md-4 mb-3" id="header_name_group" 
+                         style="display:{% if api.auth_type == 'api_key' %}block{% else %}none{% endif %};">
+                        <label for="header_name" class="form-label">Nombre del Header</label>
+                        <input type="text" class="form-control" id="header_name" 
+                               name="header_name" value="{{ api.header_name or '' }}"
+                               placeholder="ej: Authorization-api-key">
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <!-- Departamento -->
+                    <div class="col-md-6 mb-3">
+                        <label for="id_dpto_empresa" class="form-label">Departamento/Empresa *</label>
+                        <select class="form-select" id="id_dpto_empresa" name="id_dpto_empresa" required>
+                            {% for dpto in departamentos %}
+                            <option value="{{ dpto.id_dpto_empresa }}" 
+                                    {% if dpto.id_dpto_empresa == api.id_dpto_empresa %}selected{% endif %}>
+                                {{ dpto.nombre_dpto_empresa }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Intervalo de actualización -->
+                    <div class="col-md-6 mb-3">
+                        <label for="intervalo_segundos" class="form-label">Intervalo de Actualización (segundos)</label>
+                        <input type="number" class="form-control" id="intervalo_segundos" 
+                               name="intervalo_segundos" value="{{ api.intervalo_segundos }}" min="1">
+                    </div>
+                </div>
+                
+                <!-- Descripción -->
+                <div class="mb-3">
+                    <label for="descripcion" class="form-label">Descripción</label>
+                    <textarea class="form-control" id="descripcion" name="descripcion" 
+                              rows="2">{{ api.descripcion or '' }}</textarea>
+                </div>
+                
+                <!-- Estado Activo -->
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="activo" 
+                           name="activo" {% if api.activo %}checked{% endif %}>
+                    <label class="form-check-label" for="activo">
+                        API Activa
+                    </label>
+                </div>
+                
+                <hr>
+                
+                <!-- Información adicional -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <small class="text-muted">
+                            <strong>Creada:</strong> {{ api.fecha_creacion.strftime('%Y-%m-%d %H:%M') if api.fecha_creacion else 'N/A' }}
+                        </small>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <small class="text-muted">
+                            <strong>Última actualización:</strong> {{ api.fecha_actualizacion.strftime('%Y-%m-%d %H:%M') if api.fecha_actualizacion else 'N/A' }}
+                        </small>
+                    </div>
+                </div>
+                
+                <!-- Botones -->
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('api_config.listar_apis') }}" class="btn btn-secondary">
+                        ← Volver
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        💾 Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleAuthFields() {
+    const authType = document.getElementById('auth_type').value;
+    const headerGroup = document.getElementById('header_name_group');
+    const headerInput = document.getElementById('header_name');
+    
+    if (authType === 'api_key') {
+        headerGroup.style.display = 'block';
+        headerInput.required = true;
+    } else {
+        headerGroup.style.display = 'none';
+        headerInput.required = false;
+    }
+}
+</script>
+{% endblock %}

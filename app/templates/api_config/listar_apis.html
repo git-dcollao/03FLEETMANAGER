@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<button class="btn btn-success toggler2" onclick="toggleSidebarOpciones()">⚙️</button>
+<div class="sidebar2" id="sidebar2">
+    <button type="button" class="btn-close close-btn2" aria-label="Close" onclick="toggleSidebarOpciones()"></button>
+    <div class="sidebar-content">
+        <h5 class="text-white mb-3">Gestión de APIs</h5>
+        <a href="{{ url_for('api_config.crear_api') }}" class="btn btn-primary d-block mb-2">
+            ➕ Nueva API
+        </a>
+        <a href="{{ url_for('main.menu_datos') }}" class="btn btn-secondary d-block mb-2">
+            ⬅️ Volver
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block maincontent %}
+<div class="container mt-5">
+    <h2 class="mb-4">🔌 Configuración de APIs de Proveedores GPS</h2>
+    
+    <!-- Mensajes Flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if apis %}
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Proveedor</th>
+                    <th>Tipo</th>
+                    <th>URL</th>
+                    <th>Autenticación</th>
+                    <th>Departamento</th>
+                    <th>Intervalo (seg)</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for api in apis %}
+                <tr>
+                    <td>{{ api.id_api }}</td>
+                    <td><strong>{{ api.nombre_proveedor }}</strong></td>
+                    <td>
+                        {% if api.tipo_api == 'vehiculos' %}
+                            <span class="badge bg-primary">Vehículos</span>
+                        {% else %}
+                            <span class="badge bg-info">Coordenadas</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <small class="text-muted" style="word-break: break-all;">
+                            {{ api.url[:50] }}{% if api.url|length > 50 %}...{% endif %}
+                        </small>
+                    </td>
+                    <td>
+                        <span class="badge bg-secondary">{{ api.auth_type }}</span>
+                        {% if api.header_name %}
+                            <br><small>{{ api.header_name }}</small>
+                        {% endif %}
+                    </td>
+                    <td>{{ api.dpto_empresa.nombre_dpto_empresa }}</td>
+                    <td class="text-center">{{ api.intervalo_segundos }}</td>
+                    <td>
+                        {% if api.activo %}
+                            <span class="badge bg-success">✓ Activa</span>
+                        {% else %}
+                            <span class="badge bg-danger">✗ Inactiva</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="btn-group" role="group">
+                            <!-- Botón Test -->
+                            <button type="button" class="btn btn-sm btn-outline-info" 
+                                    onclick="testApi({{ api.id_api }})"
+                                    title="Probar conexión">
+                                🔍
+                            </button>
+                            
+                            <!-- Botón Toggle Activo/Inactivo -->
+                            <form method="POST" action="{{ url_for('api_config.toggle_api', id_api=api.id_api) }}" 
+                                  style="display:inline;">
+                                <button type="submit" class="btn btn-sm btn-outline-warning" 
+                                        title="{% if api.activo %}Desactivar{% else %}Activar{% endif %}">
+                                    {% if api.activo %}⏸{% else %}▶{% endif %}
+                                </button>
+                            </form>
+                            
+                            <!-- Botón Editar -->
+                            <a href="{{ url_for('api_config.editar_api', id_api=api.id_api) }}" 
+                               class="btn btn-sm btn-outline-primary" title="Editar">
+                                ✏️
+                            </a>
+                            
+                            <!-- Botón Eliminar -->
+                            <form method="POST" action="{{ url_for('api_config.eliminar_api', id_api=api.id_api) }}" 
+                                  style="display:inline;"
+                                  onsubmit="return confirm('¿Estás seguro de eliminar esta configuración?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                    🗑️
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% if api.descripcion %}
+                <tr>
+                    <td colspan="9" class="bg-light">
+                        <small><em>{{ api.descripcion }}</em></small>
+                    </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <h5>No hay configuraciones de API registradas</h5>
+        <p>Haz clic en "Nueva API" para agregar tu primer proveedor GPS.</p>
+    </div>
+    {% endif %}
+    
+    <!-- Modal para resultado de test -->
+    <div class="modal fade" id="testModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Resultado de Prueba de Conexión</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="testModalBody">
+                    <div class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Probando...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function testApi(idApi) {
+    // Mostrar modal con spinner
+    const modal = new bootstrap.Modal(document.getElementById('testModal'));
+    modal.show();
+    
+    document.getElementById('testModalBody').innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Probando...</span>
+            </div>
+            <p class="mt-2">Probando conexión...</p>
+        </div>
+    `;
+    
+    // Hacer petición AJAX
+    fetch(`/apis/test/${idApi}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        let html = '';
+        if (data.success) {
+            html = `
+                <div class="alert alert-success">
+                    <h5>✓ Conexión Exitosa</h5>
+                    <p>${data.message}</p>
+                    <small>Status Code: ${data.status_code}</small>
+                    ${data.data_preview ? `<hr><pre class="mt-2">${data.data_preview}</pre>` : ''}
+                </div>
+            `;
+        } else {
+            html = `
+                <div class="alert alert-danger">
+                    <h5>✗ Error de Conexión</h5>
+                    <p>${data.message}</p>
+                    ${data.status_code ? `<small>Status Code: ${data.status_code}</small>` : ''}
+                </div>
+            `;
+        }
+        document.getElementById('testModalBody').innerHTML = html;
+    })
+    .catch(error => {
+        document.getElementById('testModalBody').innerHTML = `
+            <div class="alert alert-danger">
+                <h5>✗ Error</h5>
+                <p>Error al probar la conexión: ${error.message}</p>
+            </div>
+        `;
+    });
+}
+</script>
+{% endblock %}

@@ -4,6 +4,39 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
     <script src="../static/JS/scripts.js?v=20260127-v2"></script>
+    <style>
+        .animation-controls-floating {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            cursor: move;
+            user-select: none;
+            backdrop-filter: blur(10px);
+            display: none;
+        }
+        .animation-controls-floating.dragging {
+            opacity: 0.8;
+        }
+        .animation-controls-floating .control-header {
+            font-size: 12px;
+            font-weight: bold;
+            color: #666;
+            margin-bottom: 10px;
+            text-align: center;
+            cursor: move;
+        }
+        .animation-controls-floating .btn {
+            min-width: 100px;
+            margin: 3px;
+            font-size: 14px;
+            padding: 8px 15px;
+        }
+    </style>
 {% endblock %}
 
 {% block body %}
@@ -65,8 +98,17 @@
     </div>
     <div id="map" class="mapa" style="height: 800px; margin-top: 20px;"></div>
 {% else %}
-    <div id="map" class="mapa" style="height: 800px; margin-top: 40px;"></div>
+    <div id="map" class="mapa" style="height: 800px; margin-top: 40px; position: relative;"></div>
 {% endif %}
+
+<!-- Controles flotantes de animación -->
+<div id="animationControlsFloating" class="animation-controls-floating">
+    <div class="control-header">⚙️ Controles de Animación</div>
+    <div style="text-align: center;">
+        <a id="pauseAnimation" class="btn btn-warning">⏸ Pausar</a>
+        <a id="playAnimation" class="btn btn-primary" style="display: none;">▶ Reanudar</a>
+    </div>
+</div>
 {% endblock %}
 {% block scripts %}
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -90,6 +132,7 @@
         ? [coordenadas_vehiculo[0].latitud, coordenadas_vehiculo[0].longitud]
         : [-33.8688197, -56.1693600]; // Coordenadas por defecto (Uruguay)
     let animationInterval;
+    let animationPaused = false;
     let heatLayer;
     let routingControls = [];
     let areas = {{ areas | tojson }};
@@ -532,7 +575,18 @@
             let routeIndex = 0;
             let currentGpsIndex = 0;
             
+            // Mostrar controles de animación flotantes
+            document.getElementById('animationControlsFloating').style.display = 'block';
+            document.getElementById('pauseAnimation').style.display = 'inline-block';
+            document.getElementById('playAnimation').style.display = 'none';
+            animationPaused = false;
+            
             animationInterval = setInterval(function () {
+                // Si está pausado, no hacer nada
+                if (animationPaused) {
+                    return;
+                }
+                
                 if (routeIndex < fullRoute.length) {
                     // Actualizar polyline hasta el punto actual de la ruta
                     let currentRouteCoords = fullRoute.slice(0, routeIndex + 1);
@@ -634,6 +688,8 @@
                     routeIndex++;
                 } else {
                     clearInterval(animationInterval);
+                    // Ocultar controles de animación flotantes al finalizar
+                    document.getElementById('animationControlsFloating').style.display = 'none';
                     console.log("Animación completada");
                 }
             }, velocidad);
@@ -648,6 +704,8 @@
             clearAnimationInterval();
             plotCoordinatesByDateAndTime();
             ocultarMapaDeCalor();
+            // Ocultar controles de animación flotantes
+            document.getElementById('animationControlsFloating').style.display = 'none';
         });
         document.getElementById('animarTrayecto').addEventListener('click', function () {
             clearAllLayersExceptBase();
@@ -659,6 +717,8 @@
             clearAllLayersExceptBase();
             clearAnimationInterval();
             ocultarMapaDeCalor();
+            // Ocultar controles de animación flotantes
+            document.getElementById('animationControlsFloating').style.display = 'none';
             plotAreas(areas);
         });
         document.getElementById('mostrarMapaCalor').addEventListener('click', function () {
@@ -671,7 +731,62 @@
             plotCoordinatesByDateAndTime();
             mostrarMapaCalor(coordenadasFiltradas);
         });
+        
+        // Event listeners para los controles de animación
+        document.getElementById('pauseAnimation').addEventListener('click', function () {
+            animationPaused = true;
+            document.getElementById('pauseAnimation').style.display = 'none';
+            document.getElementById('playAnimation').style.display = 'inline-block';
+        });
+        
+        document.getElementById('playAnimation').addEventListener('click', function () {
+            animationPaused = false;
+            document.getElementById('pauseAnimation').style.display = 'inline-block';
+            document.getElementById('playAnimation').style.display = 'none';
+        });
+        
+        // Funcionalidad de arrastre para el contenedor flotante
+        makeDraggable(document.getElementById('animationControlsFloating'));
     };
+    
+    // Función para hacer draggable el contenedor de controles
+    function makeDraggable(element) {
+        let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        
+        element.onmousedown = dragMouseDown;
+        
+        function dragMouseDown(e) {
+            e = e || window.event;
+            e.preventDefault();
+            // Obtener la posición inicial del cursor
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+            document.onmouseup = closeDragElement;
+            document.onmousemove = elementDrag;
+            element.classList.add('dragging');
+        }
+        
+        function elementDrag(e) {
+            e = e || window.event;
+            e.preventDefault();
+            // Calcular la nueva posición del cursor
+            pos1 = pos3 - e.clientX;
+            pos2 = pos4 - e.clientY;
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+            // Establecer la nueva posición del elemento
+            element.style.top = (element.offsetTop - pos2) + "px";
+            element.style.left = (element.offsetLeft - pos1) + "px";
+            element.style.right = 'auto'; // Quitar el right para usar left
+        }
+        
+        function closeDragElement() {
+            // Detener el movimiento cuando se suelta el mouse
+            document.onmouseup = null;
+            document.onmousemove = null;
+            element.classList.remove('dragging');
+        }
+    }
 
     function filtrarCoordenadasPorFechaYHora(fecha, horaInicio, horaFin) {
         return coordenadas_vehiculo.filter(function (coord) {
