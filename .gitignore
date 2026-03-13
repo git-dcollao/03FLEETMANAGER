@@ -1,8 +1,12 @@
-# Archivos OSRM (demasiado grandes para Git)
+# Archivos OSRM de datos (demasiado grandes para Git)
+# Mantener scripts .bat y documentación .md
 osrm-data/*.osrm*
 osrm-data/*.osm.pbf
 osrm-data/*.osm
 osrm-data/osrm-data/
+# Pero NO ignorar los scripts de configuración
+!*osrm*.bat
+!*OSRM*.md
 
 # Python
 __pycache__/
