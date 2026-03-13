@@ -1,0 +1,46 @@
+# Archivos OSRM (demasiado grandes para Git)
+osrm-data/*.osrm*
+osrm-data/*.osm.pbf
+osrm-data/*.osm
+osrm-data/osrm-data/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Base de datos local
+*.sqlite
+*.db
+
+# Logs
+*.log
+
+# Variables de entorno
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporales
+*.tmp
+*.bak
+*.backup
