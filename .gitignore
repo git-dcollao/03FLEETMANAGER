@@ -1,0 +1,50 @@
+# Archivos OSRM de datos (demasiado grandes para Git)
+# Mantener scripts .bat y documentación .md
+osrm-data/*.osrm*
+osrm-data/*.osm.pbf
+osrm-data/*.osm
+osrm-data/osrm-data/
+# Pero NO ignorar los scripts de configuración
+!*osrm*.bat
+!*OSRM*.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Base de datos local
+*.sqlite
+*.db
+
+# Logs
+*.log
+
+# Variables de entorno
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporales
+*.tmp
+*.bak
+*.backup
